@@ -1,16 +1,17 @@
 #script performing evaluations for synthetic datasets
 
-from evaluate_util import data_loader,Fidelity
-from report_util import Fidelity
-from preprocess import DGAN_pr
+from evaluate_util import Fidelity as eval_fid
+from preprocess import data_loader, preprocess_mock
+from report_util import Fidelity as rep_fid
+
 
 #load mock dataset (or real & synthetic dataset in the future) and preprocess to 3d array
 attr = data_loader('data/mock_attr.csv')
 long = data_loader('data/mock_longitudinal.csv')
-attr,long = DGAN_pr.preprocess_mock(attr,long)
+attr,long = preprocess_mock(attr,long)
 
 #create dictionary of descriptive statistics as first sanity check
-attr_stats,long_stats = Fidelity.descr_stats(attr=attr,long=long)
+attr_stats,long_stats = eval_fid.descr_stats(attr=attr,long=long)
 
 #create desciptive statistic table
 #Fidelity.stats_table(long_stats,statistics=['mean','stdev'],features=['feat1','feat2','feat3','feat4','feat5']).show()
@@ -19,7 +20,7 @@ attr_stats,long_stats = Fidelity.descr_stats(attr=attr,long=long)
 # #create percentile plots
 percentiles = [5,25,50,75,95]
 alphas= [.2,.5,1,.5,.2]
-Fidelity.percentile_plot(long_stats,percentiles,alphas).show()
+rep_fid.percentile_plot(long_stats,percentiles,alphas).show()
 
 # #create tsne plots
 # tsne_embeddings = Fidelity.tsne(long)

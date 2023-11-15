@@ -5,10 +5,7 @@ import keras
 from keras import layers
 from scipy.stats import ks_2samp
 
-def data_loader(file_path):
-    #loads data from a csv file as numpy array
-    data = np.loadtxt(file_path,delimiter=',')
-    return data
+
 
 class Fidelity:
 
