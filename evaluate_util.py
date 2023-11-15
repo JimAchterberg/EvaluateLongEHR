@@ -9,30 +9,44 @@ from scipy.stats import ks_2samp
 
 class Fidelity:
 
-    def descr_stats(attr,long):
-        #returns relevant descriptive statistics of attributes and longitudinal data
-        
-        attr_stats = {}
-        long_stats = {}
-
-        #find min, max, mean and std. dev of every feature by operating across sample and time dimension
-        attr_stats['min'] = np.min(attr,axis=0)
-        long_stats['min'] = np.min(long,axis=0)
-        attr_stats['max'] = np.max(attr,axis=0)
-        long_stats['max'] = np.max(long,axis=(0,1))
-        attr_stats['mean'] = np.mean(attr,axis=0)
-        long_stats['mean'] = np.mean(long,axis=(0,1))
-        attr_stats['stdev'] = np.std(attr,axis=0)
-        long_stats['stdev'] = np.std(long,axis=(0,1))
-
-        #add longitudinal specific descriptive statistics (over time), in this case percentiles of every feature over time 
-        long_stats['percentile_5'] = np.percentile(long,5,axis=0)
-        long_stats['percentile_25'] = np.percentile(long,25,axis=0)
-        long_stats['percentile_50'] = np.percentile(long,50,axis=0)
-        long_stats['percentile_75'] = np.percentile(long,75,axis=0)
-        long_stats['percentile_95'] = np.percentile(long,95,axis=0)
+    def create_dicts(attr,long,syn_attr,syn_long):
+        #create dictionary of all possible descriptive statistics (in the future we can use this to only select particular statistics for our table)
+            attr_dct = {}
+            syn_attr_dct = {}
+            long_dct = {}
+            syn_long_dct = {}
+            #MEAN
+            attr_dct['mean'] = np.mean(attr,axis=0)
+            syn_attr_dct['mean'] = np.mean(syn_attr,axis=0)
+            long_dct['mean'] = np.mean(long,axis=(0,1))
+            syn_long_dct['mean'] = np.mean(syn_long,axis=(0,1))
+            #STDEV
+            attr_dct['st.dev'] = np.std(attr,axis=0)
+            syn_attr_dct['st.dev'] = np.std(syn_attr,axis=0)
+            long_dct['st.dev'] = np.std(long,axis=(0,1))
+            syn_long_dct['st.dev'] = np.std(syn_long,axis=(0,1))
+            #MIN
+            attr_dct['min'] = np.min(attr,axis=0)
+            syn_attr_dct['min'] = np.min(syn_attr,axis=0)
+            long_dct['min'] = np.min(long,axis=(0,1))
+            syn_long_dct['min'] = np.min(syn_long,axis=(0,1))
+            #MAX
+            attr_dct['max'] = np.max(attr,axis=0)
+            syn_attr_dct['max'] = np.max(syn_attr,axis=0)
+            long_dct['max'] = np.max(long,axis=(0,1))
+            syn_long_dct['max'] = np.max(syn_long,axis=(0,1))
+            return attr_dct,syn_attr_dct,long_dct,syn_long_dct
     
-        return attr_stats,long_stats
+    def percentiles(long,syn_long,percentiles):
+        #create dictionaries of percentiles over time for real and synthetic data
+        perc_dct = {}
+        syn_perc_dct = {}
+
+        for i in percentiles:
+            perc_dct[str(i)] = np.percentile(long,q=i,axis=0)
+            syn_perc_dct[str(i)] = np.percentile(syn_long,q=i,axis=0)
+
+        return perc_dct,syn_perc_dct
 
 
 

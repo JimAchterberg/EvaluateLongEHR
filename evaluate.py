@@ -1,26 +1,38 @@
 #script performing evaluations for synthetic datasets
-
-from evaluate_util import Fidelity as eval_fid
 from preprocess import data_loader, preprocess_mock
 from report_util import Fidelity as rep_fid
 
+#-------------------------------------------------------------------------------------------------------
 
-#load mock dataset (or real & synthetic dataset in the future) and preprocess to 3d array
-attr = data_loader('data/mock_attr.csv')
-long = data_loader('data/mock_longitudinal.csv')
+#load csv of mock dataset (or real & synthetic dataset in the future) and preprocess to 3d array
+attr = data_loader('data/real/mock_attr.csv')
+long = data_loader('data/real/mock_longitudinal.csv')
+syn_attr = data_loader('data/syn/mock_attr.csv')
+syn_long = data_loader('data/syn/mock_longitudinal.csv')
 attr,long = preprocess_mock(attr,long)
+syn_attr,syn_long = preprocess_mock(syn_attr,syn_long)
+_,k = attr.shape
+n,t,f = long.shape
 
-#create dictionary of descriptive statistics as first sanity check
-attr_stats,long_stats = eval_fid.descr_stats(attr=attr,long=long)
+attr_names = []
+long_names = []
+for i in range(k):
+    attr_names.append(f'attribute_{i}')
+for i in range(f):
+    long_names.append(f'longitudinal_{i}')
 
-#create desciptive statistic table
-#Fidelity.stats_table(long_stats,statistics=['mean','stdev'],features=['feat1','feat2','feat3','feat4','feat5']).show()
+#-------------------------------------------------------------------------------------------------------
 
+#create descriptive statistics table
+# df = rep_fid.stats_table(real=[attr,long],syn=[syn_attr,syn_long],feature_names=[attr_names,long_names],stats=['mean','st.dev','min','max'])
+# print(df)
 
-# #create percentile plots
-percentiles = [5,25,50,75,95]
-alphas= [.2,.5,1,.5,.2]
-rep_fid.percentile_plot(long_stats,percentiles,alphas).show()
+#create percentile plot
+# percentiles = [5,25,75,95]
+# alphas = [.2,.5,.5,.2]
+# perc_plot = rep_fid.percentile_plot(long,syn_long,long_names,percentiles,alphas)
+# perc_plot.show()
+
 
 # #create tsne plots
 # tsne_embeddings = Fidelity.tsne(long)
