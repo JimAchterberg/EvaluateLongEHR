@@ -33,10 +33,10 @@ for i in range(f):
 # perc_plot = rep_fid.percentile_plot(long,syn_long,long_names,percentiles,alphas)
 # perc_plot.show()
 
+#create tsne plot
+tsne_plot = rep_fid.tsne_plot(long,syn_long)
+tsne_plot.show()
 
-# #create tsne plots
-# tsne_embeddings = Fidelity.tsne(long)
-# Fidelity.tsne_plot(tsne_embeddings).show()
 
 #create gof report
 # dct = Fidelity.gof(meta_real=meta[0:50],long_real=long[0:50],meta_syn=meta[50:],long_syn=long[50:])s

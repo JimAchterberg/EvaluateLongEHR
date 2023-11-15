@@ -67,11 +67,18 @@ class Fidelity:
         return plt
     
 
-    def tsne_plot(tsne_embeddings):
+    def tsne_plot(long,syn_long):
+        n_r,t,f = long.shape
+        n_s,_,_ = syn_long.shape
+        #append synthetic to real data
+        data = np.concatenate((long,syn_long),axis=0)
+        #make binary labels for real(0) and synthetic(1) data to later colour the samples
+        y = np.concatenate((np.zeros(shape=n_s),np.ones(shape=n_r)),axis=0)
+        #find the 2d embeddings from tsne with gower & DTW
+        embeddings = eval_fid.tsne(data)
         #plot the 'fitted' tsne 
-
-        plt.figure('TSNE of longitudinal data')
-        plt.scatter(tsne_embeddings[:,0],tsne_embeddings[:,1])
+        plt.figure('TSNE ')
+        plt.scatter(embeddings[:,0],embeddings[:,1],c=y)
         return plt
 
     def gof_report(dct):

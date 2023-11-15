@@ -50,8 +50,8 @@ class Fidelity:
 
 
 
-    def tsne(long):
-        #computes tsne embeddings for longidunal mixed-type data (using DTW with gower distance)
+    def tsne(data):
+        #computes tsne embeddings for longitudinal mixed-type data (using DTW with gower distance)
         
         #create a configuration object for the distance matrix algorithm
         class Input:
@@ -69,14 +69,11 @@ class Fidelity:
                 self.sigma_kernel = 1
                 self.itakura_max_slope = None
                 self.sakoe_chiba_radius = 1
-
         input_obj = Input()
-        dist_matrix = None
-        embeddings = None
-        #dist_matrix = dtw_functions.dtw_tensor_3d(long,long,input_obj)
+        #find distance matrix of data to itself
+        dist_matrix = dtw_functions.dtw_tensor_3d(data,data,input_obj)
         #input to TSNE is distance matrix of our sample
-        #CURRENTLY DEPENDENCY CONFLICTS ARE THE CAUSE WE HAVE TO COMMENT THIS OUT
-        #embeddings = TSNE(n_components=2,init='random',metric='precomputed').fit_transform(dist_matrix)
+        embeddings = TSNE(n_components=2,init='random',metric='precomputed').fit_transform(dist_matrix)
         return embeddings
 
     def gof(attr_real,long_real,attr_syn,long_syn):
