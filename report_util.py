@@ -116,12 +116,4 @@ class Fidelity:
                     [np.nan,np.nan,acc],[np.nan,np.nan,p_val]]
         
         df = pd.DataFrame(entries,columns=columns,index=rows)
-        
-        #           Correct     False   Total
-        # Real      
-        # Syn
-        # Total                         N
-        # Accuracy                      ...
-        # p_value                       ...
-
         return df

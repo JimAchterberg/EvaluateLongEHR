@@ -105,3 +105,6 @@ class Privacy:
     #class with methods for evaluating privacy preserving capabilities of synthetic data
     def aia():
         pass
+
+    def distance_to_closest_record():
+        pass 
