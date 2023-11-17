@@ -1,6 +1,8 @@
 #script performing evaluations for synthetic datasets
 from preprocess import data_loader, preprocess_mock
 from report_util import Fidelity as rep_fid
+import keras 
+from keras import layers
 
 #-------------------------------------------------------------------------------------------------------
 
@@ -34,9 +36,31 @@ for i in range(f):
 # perc_plot.show()
 
 #create tsne plot
-tsne_plot = rep_fid.tsne_plot(long,syn_long)
-tsne_plot.show()
+# tsne_plot = rep_fid.tsne_plot(long,syn_long)
+# tsne_plot.show()
 
+#specify the GOF model yourself, for the data at hand
+class gof_model(keras.Model):
+    def __init__(self):
+        super().__init__()
+        self.dense = layers.Dense(100,activation='relu')
+        self.recurrent = layers.LSTM(100,activation='relu')
+        self.concat = layers.Concatenate(axis=1)
+        self.process_1 = layers.Dense(100,activation='relu')
+        self.process_2 = layers.Dense(50,activation='relu')
+        self.classify = layers.Dense(1,activation='sigmoid')
+
+    def call(self, inputs):
+        attributes,longitudinal = inputs
+        attr = self.dense(attributes)
+        long = self.recurrent(longitudinal)
+        x = self.concat([attr,long])
+        x = self.process_1(x)
+        x = self.process_2(x)
+        return self.classify(x)
+    
+report = rep_fid.gof_report(real_inputs=[attr,long],syn_inputs=[syn_attr,syn_long],model=gof_model())
+print(report)
 
 #create gof report
 # dct = Fidelity.gof(meta_real=meta[0:50],long_real=long[0:50],meta_syn=meta[50:],long_syn=long[50:])s
