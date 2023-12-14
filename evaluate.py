@@ -1,45 +1,73 @@
 #script performing evaluations for synthetic datasets
-from preprocess import data_loader, preprocess_mock
-from report_util import Fidelity as rep_fid
-import keras 
-from keras import layers
+#from preprocess import data_loader, preprocess_mock
+#from report_util import Fidelity as rep_fid
+#import keras 
+#from keras import layers
 
 #-------------------------------------------------------------------------------------------------------
+#load real and synthetic data
+import pandas as pd
+import os
+import utils
+path = 'C:/Users/Jim/Documents/thesis_paper/data/mimic_iv_preprocessed'
+file = 'PAR_real_data.csv'
+cols = ['subject_id','seq_num','icd_code','gender','age','deceased','race']
+real_df = pd.read_csv(os.path.join(path,file),usecols=cols)
 
-#load csv of mock dataset (or real & synthetic dataset in the future) and preprocess to 3d array
-attr = data_loader('data/real/mock_attr.csv')
-long = data_loader('data/real/mock_longitudinal.csv')
-syn_attr = data_loader('data/syn/mock_attr.csv')
-syn_long = data_loader('data/syn/mock_longitudinal.csv')
-attr,long = preprocess_mock(attr,long)
-syn_attr,syn_long = preprocess_mock(syn_attr,syn_long)
-_,k = attr.shape
-n,t,f = long.shape
+#state datatypes for simple accessing later
+static_numerical = ['age']
+static_categorical = ['gender','deceased','race']
+timevarying_numerical = []
+timevarying_categorical = ['icd_code']
 
-attr_names = []
-long_names = []
-for i in range(k):
-    attr_names.append(f'attribute_{i}')
-for i in range(f):
-    long_names.append(f'longitudinal_{i}')
+#get static feature dataframe
+real_df_static = utils.get_static(data=real_df,columns=static_categorical+static_numerical)
 
-#-------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------------------
+#descriptive statistics step
 
-#create descriptive statistics table
-#TODO:
-#ROWNAMES
-# df = rep_fid.stats_table(real=[attr,long],syn=[syn_attr,syn_long],feature_names=[attr_names,long_names],stats=['mean','st.dev','min','max'])
-# print(df)
+#get descriptive statistics for static numerical variables
+stats = utils.descr_stats(data=real_df_static[static_numerical])
 
-#create percentile plot
-# percentiles = [5,25,75,95]
-# alphas = [.2,.5,.5,.2]
-# perc_plot = rep_fid.percentile_plot(long,syn_long,long_names,percentiles,alphas)
-# perc_plot.show()
+#get relative frequencies for static categorical variables
+rel_freq = utils.relative_freq(data=real_df_static[static_categorical])
 
-#create tsne plot
-# tsne_plot = rep_fid.tsne_plot(long,syn_long)
-# tsne_plot.show()
+#get relative frequencies for timevarying categorical variables
+rel_freq = utils.relative_freq(data=real_df[timevarying_categorical])
+
+#get matrixplot of relative frequencies for timevarying categorical variables over time
+matrixplot = utils.rel_freq_matrix_plot(data=real_df,columns=timevarying_categorical,timestep_idx='seq_num')
+
+#------------------------------------------------------------------------------------------------------------
+#tSNE step
+
+#one-hot encode non-binary categoricals
+real_df = utils.one_hot_encoding(real_df,['race','icd_code'])
+#get static feature dataframe with one hot encoded values
+static_cols = [x for x in ]
+real_df_static = utils.get_static(data=real_df,columns=)
+
+#separately find static and timevarying distances, first find static distances through gower package
+static_distances = utils.gower_matrix(real_df_static)
+
+#now find timevarying distances, and get data to 3d numpy array
+timevarying_cols = [x for x in real_df.columns if 'icd' in x]
+real_3d = utils.df_to_3d(data=real_df,timevarying_cols=timevarying_cols)
+timevarying_distances = utils.mts_gower_matrix(data=real_3d)
+
+#normalize static and timevarying distances
+static_distances = static_distances.apply(lambda x:(x-x.mean())/(x.std()),axis=0)
+timevarying_distances = timevarying_distances.apply(lambda x:(x-x.mean())/(x.std()),axis=0)
+
+
+#take sum of static and timevarying distances WEIGHTED BY the relative amount of static and timevarying distances
+
+
+# #input to TSNE is distance matrix of our sample
+# embeddings = TSNE(n_components=2,init='random',metric='precomputed').fit_transform(dist_matrix)
+   
+#-----------------------------------------------------------------------------------------------------------
+#GoF step
 
 #specify the GOF model yourself, for the data at hand
 # class gof_model(keras.Model):
