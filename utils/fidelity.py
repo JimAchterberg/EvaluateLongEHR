@@ -1,10 +1,12 @@
+
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
-import numpy as np
-from dtwParallel import dtw_functions
 from gower import gower_matrix
-
+from dtwParallel import dtw_functions
+from sklearn.manifold import TSNE
+from scipy.stats import ks_2samp
+from sklearn.metric import accuracy_score
 #get descriptive statistics
 def descr_stats(data):
     stats = ['mean','std','min','max']
@@ -15,9 +17,6 @@ def descr_stats(data):
     list_.append(data.max(axis=0))
     return pd.DataFrame(list_,index=stats)
 
-#get static attribute table in which values are not repeated
-def get_static(data,columns,subject_idx='subject_id'):
-    return data.groupby(subject_idx)[columns].first()
 
 #get relative frequencies of categorical variables
 def relative_freq(data):
@@ -34,18 +33,12 @@ def rel_freq_matrix_plot(data,columns,timestep_idx='seq_num'):
     plt.ylabel('Category')
     return plt
 
-#get 2d timevarying data to 3d numpy array
-def df_to_3d(data,timevarying_cols,timestep_idx='seq_num',subject_idx='subject_id'):
-    t = data[timestep_idx].max() 
-    n = data[subject_idx].nunique()
-    data_3d = np.ones((n,t,len(timevarying_cols)))*-1
-    for idx,(_,subject) in enumerate(data.groupby(subject_idx)[timevarying_cols]):
-        data_3d[idx,:subject.shape[0],:] = subject
-    return data_3d
+
 
 #get gower matrix for 2d data
-def gower_matrix(data):
+def static_gower_matrix(data):
     return gower_matrix(data)
+
 
 #get gower matrix for 3d time series of mixed datatypes
 def mts_gower_matrix(data):
@@ -69,10 +62,41 @@ def mts_gower_matrix(data):
     timevarying_distance = dtw_functions.dtw_tensor_3d(data,data,input_obj)
     return timevarying_distance
 
-#one hot encode non-binary categoricals
-def one_hot_encoding(data,columns):
-    for i in columns:
-        dummies = pd.get_dummies(data[i],prefix=str(i))
-        data = data.drop(i,axis=1)
-        data = pd.concat([data,dummies],axis=1)
-    return data
+
+#tSNE projection plot, color coded by label
+def tsne(distance_matrix,labels):
+    embeddings = TSNE(n_components=2,init='random',metric='precomputed').fit_transform(distance_matrix)
+    plt.figure(figsize=(10, 6))
+    plt.scatter(embeddings[:,0],embeddings[:,1],c=labels)
+    plt.title('tSNE plot')
+    return plt
+
+import keras
+from keras import layers
+class gof_model(keras.Model):
+    def __init__(self):
+        super().__init__()
+        self.dense = layers.Dense(100,activation='relu')
+        self.recurrent = layers.LSTM(100,activation='relu')
+        self.concat = layers.Concatenate(axis=1)
+        self.process_1 = layers.Dense(100,activation='relu')
+        self.process_2 = layers.Dense(50,activation='relu')
+        self.classify = layers.Dense(1,activation='sigmoid')
+
+    def call(self, inputs):
+        attributes,longitudinal = inputs
+        attr = self.dense(attributes)
+        long = self.recurrent(longitudinal)
+        x = self.concat([attr,long])
+        x = self.process_1(x)
+        x = self.process_2(x)
+        return self.classify(x)
+
+
+
+def gof_test(real_pred,syn_pred):
+    return ks_2samp(data1=real_pred.flatten(),data2=syn_pred.flatten(),alternative='two-sided')
+
+
+def accuracy(real,pred):
+    return accuracy_score(real,pred)
