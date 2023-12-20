@@ -6,7 +6,7 @@ from gower import gower_matrix
 from dtwParallel import dtw_functions
 from sklearn.manifold import TSNE
 from scipy.stats import ks_2samp
-from sklearn.metric import accuracy_score
+from sklearn.metrics import accuracy_score
 #get descriptive statistics
 def descr_stats(data):
     stats = ['mean','std','min','max']
