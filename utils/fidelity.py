@@ -1,4 +1,4 @@
-
+import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
@@ -7,6 +7,7 @@ from dtwParallel import dtw_functions
 from sklearn.manifold import TSNE
 from scipy.stats import ks_2samp
 from sklearn.metrics import accuracy_score
+
 #get descriptive statistics
 def descr_stats(data):
     stats = ['mean','std','min','max']
@@ -23,30 +24,33 @@ def relative_freq(data):
     return pd.concat([data[col].value_counts(normalize=True) for col in data],axis=1)
 
 #get matrixplot of relative frequencies of categorical variables over time
-def rel_freq_matrix_plot(data,columns,timestep_idx='seq_num'):
+def rel_freq_matrix(data,columns,timestep_idx='seq_num'):
     rel_freq = data.groupby(timestep_idx)[columns].value_counts(normalize=True).rename('rel_freq').reset_index()
     rel_freq = rel_freq.pivot(index=columns,columns=timestep_idx,values='rel_freq')
+    return rel_freq
+
+def freq_matrix_plot(rel_freq,range=(0,0.2)):
+    vmin,vmax = range
     plt.figure(figsize=(10, 6))
-    sns.heatmap(rel_freq, annot=False, cmap='rocket_r', fmt=".2f")
+    sns.heatmap(rel_freq, annot=False, cmap='rocket_r', fmt=".2f", vmin=vmin, vmax=vmax)
     plt.title('Relative Frequency of Categories over Timesteps')
     plt.xlabel('Timestep')
     plt.ylabel('Category')
+    #plt.xticks(ticks=np.arange(1,data[timestep_idx].max()+1,1),labels=data[timestep_idx].unique())
+    #plt.yticks(ticks=np.arange(0,data[columns].max(),1),labels=np.sort(data[columns].unique()))
     return plt
 
-
-
 #get gower matrix for 2d data
-def static_gower_matrix(data):
-    return gower_matrix(data)
-
+def static_gower_matrix(data,cat_features=None):
+    return gower_matrix(data,cat_features=cat_features)
 
 #get gower matrix for 3d time series of mixed datatypes
-def mts_gower_matrix(data):
+def mts_gower_matrix(data,cat_features):
     class Input:
         def __init__(self):
-            self.check_errors = False 
+            self.check_errors = True 
             self.type_dtw = "d"
-            self.constrained_path_search = 'itakura'
+            self.constrained_path_search = None
             self.MTS = True
             self.regular_flag = -1
             self.n_threads = -1
@@ -59,7 +63,7 @@ def mts_gower_matrix(data):
             self.sakoe_chiba_radius = 1
     input_obj = Input()
     #to see progress, we can import tqdm and use it in dtwParallel package -> @ dtw_functions.dtw_tensor_3d 
-    timevarying_distance = dtw_functions.dtw_tensor_3d(data,data,input_obj)
+    timevarying_distance = dtw_functions.dtw_tensor_3d(data,data,input_obj,cat_features)
     return timevarying_distance
 
 
@@ -92,11 +96,8 @@ class gof_model(keras.Model):
         x = self.process_2(x)
         return self.classify(x)
 
-
-
 def gof_test(real_pred,syn_pred):
     return ks_2samp(data1=real_pred.flatten(),data2=syn_pred.flatten(),alternative='two-sided')
-
 
 def accuracy(real,pred):
     return accuracy_score(real,pred)

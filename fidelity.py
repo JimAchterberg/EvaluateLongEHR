@@ -9,22 +9,29 @@
 import numpy as np
 import pandas as pd
 import os
-import utils
+from utils import preprocess,fidelity
 
 
 path = 'C:/Users/Jim/Documents/thesis_paper/data/mimic_iv_preprocessed'
-file = 'PAR_real_data.csv'
+file = 'real_data_211223.csv'
 cols = ['subject_id','seq_num','icd_code','gender','age','deceased','race']
 real_df = pd.read_csv(os.path.join(path,file),usecols=cols)
 
 #REMOVE LATER!!!!!!!!!!
-split = np.random.choice(real_df.subject_id.unique(),int(real_df.shape[0]/2))
-syn_df = real_df[real_df.subject_id.isin(split)]
-real_df = real_df[~real_df.subject_id.isin(split)]
+np.random.seed(123)
+sample_size = 50
+#split = np.random.choice(real_df.subject_id.unique(),int(real_df.subject_id.nunique()/2))
+d = real_df.subject_id.unique()
+split1 = np.random.choice(d,sample_size)
+d = [x for x in d if x not in split1]
+split2 = np.random.choice(d,sample_size)
+syn_df = real_df[real_df.subject_id.isin(split1)]
+real_df = real_df[real_df.subject_id.isin(split1)]
+
 
 #get static feature dataframes
-real_df_static = utils.preprocess.get_static(data=real_df,columns=['age','gender','deceased','race'])
-syn_df_static = utils.preprocess.get_static(data=syn_df,columns=['age','gender','deceased','race'])
+real_df_static = preprocess.get_static(data=real_df,columns=['age','gender','deceased','race'])
+syn_df_static = preprocess.get_static(data=syn_df,columns=['age','gender','deceased','race'])
 #-----------------------------------------------------------------------------------------------------------
 #descriptive statistics step
 
@@ -39,28 +46,33 @@ syn_df_static = utils.preprocess.get_static(data=syn_df,columns=['age','gender',
 # syn_rel_freq = utils.fidelity.relative_freq(data=syn_df_static[['gender','deceased','race']])
 
 # # #get matrixplot of relative frequencies for timevarying categorical variables over time
-#real_matrixplot = utils.fidelity.rel_freq_matrix_plot(data=real_df,columns=['icd_code'])
-#syn_matrixplot = utils.fidelity.rel_freq_matrix_plot(data=syn_df,columns=['icd_code'])
+# real_freqmatrix = fidelity.rel_freq_matrix(data=real_df,columns='icd_code')
+# syn_freqmatrix = fidelity.rel_freq_matrix(data=syn_df,columns='icd_code')
+# diff_freqmatrix = real_freqmatrix-syn_freqmatrix
+# diff_matrixplot = fidelity.freq_matrix_plot(diff_freqmatrix,range=(-.01,.01))
+# diff_matrixplot.show()
 
 # #------------------------------------------------------------------------------------------------------------
 #tSNE step
-#one-hot encode non-binary categoricals
-# real_df = utils.preprocess.one_hot_encoding(real_df,columns=['race','icd_code'])
-# syn_df = utils.preprocess.one_hot_encoding(syn_df,columns=['race','icd_code'])
 
-# #get static feature dataframe with one hot encoded values
-#static_cols = [x for x in real_df.columns if 'icd_code' not in x]
-# real_df_static = utils.preprocess.get_static(data=real_df,columns=static_cols)
-# syn_df_static = utils.preprocess.get_static(data=syn_df,columns=static_cols)
+#separately find static and timevarying distances, first find static distances through gower package
+# real_df_static = real_df_static.astype(float)
+# syn_df_static = syn_df_static.astype(float)
+# age gender deceased race
+# static_distances = fidelity.static_gower_matrix(pd.concat([real_df_static,syn_df_static],axis=0),cat_features=[False,True,True,True])
+# print(static_distances)
 
-# separately find static and timevarying distances, first find static distances through gower package
-#static_distances = utils.fidelity.static_gower_matrix(pd.concat([real_df_static,syn_df_static],axis=0))
+# # now get data to 3d array and find timevarying distances with dtw package
 
-# # # now get data to 3d array and find timevarying distances with dtw package
-#timevarying_cols = [x for x in real_df.columns if 'icd_code' in x]
-# real_3d = utils.preprocess.df_to_3d(data=real_df,timevarying_cols=timevarying_cols)
-# syn_3d = utils.preprocess.df_to_3d(data=syn_df,timevarying_cols=timevarying_cols)
-# timevarying_distances = utils.fidelity.mts_gower_matrix(data=pd.concat([real_3d,syn_3d],axis=0))
+real_3d = preprocess.df_to_3d(data=real_df,timevarying_cols=['icd_code'])
+syn_3d = preprocess.df_to_3d(data=syn_df,timevarying_cols=['icd_code'])
+real_3d = real_3d.astype(float)
+syn_3d = syn_3d.astype(float)
+
+#only icd_code is present
+timevarying_distances = fidelity.mts_gower_matrix(data=np.concatenate((real_3d,syn_3d),axis=0),cat_features=[True])
+print(timevarying_distances)
+
 
 # # normalize static and timevarying distances
 # static_distances = static_distances.apply(utils.preprocess.normalize,axis=0)

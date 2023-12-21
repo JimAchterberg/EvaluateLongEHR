@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import train_test_split
+from sklearn.model_selection import train_test_split
 #get static attribute table in which values are not repeated
 def get_static(data,columns,subject_idx='subject_id'):
     return data.groupby(subject_idx)[columns].first()
