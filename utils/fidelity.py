@@ -7,6 +7,8 @@ from dtwParallel import dtw_functions
 from sklearn.manifold import TSNE
 from scipy.stats import ks_2samp
 from sklearn.metrics import accuracy_score
+import keras
+from keras import layers
 
 #get descriptive statistics
 def descr_stats(data):
@@ -77,8 +79,7 @@ def tsne(distance_matrix,labels):
     plt.title('tSNE plot')
     return plt
 
-import keras
-from keras import layers
+
 class gof_model(keras.Model):
     def __init__(self):
         super().__init__()
@@ -98,7 +99,7 @@ class gof_model(keras.Model):
         x = self.process_2(x)
         return self.classify(x)
 
-def gof_test(real_pred,syn_pred):
+def ks_test(real_pred,syn_pred):
     return ks_2samp(data1=real_pred.flatten(),data2=syn_pred.flatten(),alternative='two-sided')
 
 def accuracy(real,pred):
