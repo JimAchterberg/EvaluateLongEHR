@@ -16,12 +16,14 @@ def descr_stats(data):
     list_.append(data.std(axis=0))
     list_.append(data.min(axis=0))
     list_.append(data.max(axis=0))
-    return pd.DataFrame(list_,index=stats)
+    return pd.DataFrame(list_,index=stats,columns=data.columns)
 
 
 #get relative frequencies of categorical variables
 def relative_freq(data):
-    return pd.concat([data[col].value_counts(normalize=True) for col in data],axis=1)
+    proportions = pd.concat([data[col].value_counts(normalize=True) for col in data],axis=1)
+    proportions.columns = data.columns
+    return proportions
 
 #get matrixplot of relative frequencies of categorical variables over time
 def rel_freq_matrix(data,columns,timestep_idx='seq_num'):
@@ -45,14 +47,14 @@ def static_gower_matrix(data,cat_features=None):
     return gower_matrix(data,cat_features=cat_features)
 
 #get gower matrix for 3d time series of mixed datatypes
-def mts_gower_matrix(data,cat_features):
+def mts_gower_matrix(data,cat_features=None):
     class Input:
         def __init__(self):
             self.check_errors = True 
             self.type_dtw = "d"
             self.constrained_path_search = None
             self.MTS = True
-            self.regular_flag = -1
+            self.regular_flag = '-1'
             self.n_threads = -1
             self.local_dissimilarity = "gower"
             self.visualization = False
@@ -60,7 +62,7 @@ def mts_gower_matrix(data,cat_features):
             self.dtw_to_kernel = False
             self.sigma_kernel = 1
             self.itakura_max_slope = None
-            self.sakoe_chiba_radius = 1
+            self.sakoe_chiba_radius = None
     input_obj = Input()
     #to see progress, we can import tqdm and use it in dtwParallel package -> @ dtw_functions.dtw_tensor_3d 
     timevarying_distance = dtw_functions.dtw_tensor_3d(data,data,input_obj,cat_features)

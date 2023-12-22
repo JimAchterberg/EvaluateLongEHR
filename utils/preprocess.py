@@ -27,6 +27,10 @@ def one_hot_encoding(data,columns):
 def normalize(x):
     return (x-x.mean())/(x.std())
 
+#zero one scaling function for pandas dataframe
+def zero_one_scale(x):
+    return (x-x.min())/(x.max()-x.min())
+
 
 def gof_train_split(df,labels):
     #create train test split stratified on syn/real labels
