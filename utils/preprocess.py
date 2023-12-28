@@ -16,10 +16,21 @@ def df_to_3d(data,columns,timestep_idx='seq_num',subject_idx='subject_id'):
     return data_3d
 
 #one hot encode non-binary categoricals
-def one_hot_encoding(data,columns):
-    for i in columns:
-        dummies = pd.get_dummies(data[i],prefix=str(i))
+def one_hot_encoding(data,columns,column_sizes=None):
+    for j,i in enumerate(columns):
+        dummies = pd.get_dummies(data[i])
+        dummies = dummies.reset_index()
+        dummies = dummies.drop('index',axis=1)
+        
+        if column_sizes[j]>dummies.shape[1]:
+            zeros = pd.DataFrame(np.zeros(shape=(data.shape[0],column_sizes[j]-dummies.shape[1])))
+            dummies = pd.concat([dummies,zeros],axis=1)
+        column_names = []
+        for n in range(dummies.shape[1]):
+            column_names.append(str(i)+'_'+str(n))
+        dummies.columns = column_names
         data = data.drop(i,axis=1)
+        data = data.reset_index()
         data = pd.concat([data,dummies],axis=1)
     return data
 
@@ -30,6 +41,10 @@ def normalize(x):
 #zero one scaling function for pandas dataframe
 def zero_one_scale(x):
     return (x-x.min())/(x.max()-x.min())
+    
+
+
+    
 
 
 def train_split(X,y,stratify=None,train_size=.7):

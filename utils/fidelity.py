@@ -37,7 +37,6 @@ def freq_matrix_plot(rel_freq,range=(0,0.2)):
     vmin,vmax = range
     plt.figure(figsize=(10, 6))
     sns.heatmap(rel_freq, annot=False, cmap='rocket_r', fmt=".2f", vmin=vmin, vmax=vmax)
-    plt.title('Relative Frequency of Categories over Timesteps')
     plt.xlabel('Timestep')
     plt.ylabel('Category')
     #plt.xticks(ticks=np.arange(1,data[timestep_idx].max()+1,1),labels=data[timestep_idx].unique())
@@ -75,9 +74,13 @@ def mts_gower_matrix(data,cat_features=None):
 def tsne(distance_matrix,labels):
     embeddings = TSNE(n_components=2,init='random',metric='precomputed').fit_transform(distance_matrix)
     plt.figure(figsize=(10, 6))
-    plt.scatter(embeddings[:,0],embeddings[:,1],c=labels)
-    plt.title('tSNE plot')
+    plt.scatter(embeddings[:,0],embeddings[:,1],c=labels,cmap='bwr')
+    handles=[plt.Line2D([0], [0], marker='o', color='w', 
+                    markerfacecolor='blue', label='Real'),plt.Line2D([0], [0], marker='o', color='w', 
+                    markerfacecolor='red', label='Synthetic')]
+    plt.legend(handles=handles)
     return plt
+
 
 
 class gof_model(keras.Model):

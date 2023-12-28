@@ -30,6 +30,7 @@ def exec_descr_stats(real_df,syn_df,result_path):
     syn_freqmatrix = fidelity.rel_freq_matrix(data=syn_df,columns='icd_code')
     diff_freqmatrix = real_freqmatrix-syn_freqmatrix
     diff_matrixplot = fidelity.freq_matrix_plot(diff_freqmatrix,range=(-.01,.01))
+    diff_matrixplot.title('Synthetic/real ICD section frequency difference')
     filename = 'freq_diff_matrixplot.png'
     diff_matrixplot.savefig(os.path.join(result_path,filename))
     diff_matrixplot.show()
@@ -78,33 +79,41 @@ def exec_tsne(real_df,syn_df,result_path):
     labels = np.concatenate((np.zeros(shape=(real_df_static.shape[0])),
                            np.ones(shape=(syn_df_static.shape[0]))),axis=0)
     tsne_plot = fidelity.tsne(distance_matrix,labels)
+    #tsne_plot.title('tSNE plot of synthetic/real samples')
     filename = 'tsne.png'
     tsne_plot.savefig(os.path.join(result_path,filename))
     tsne_plot.show()
 
-    #FIX tSNE PLOT LAYOUT!!!!
+   
     
 #executes gof step
 def exec_gof(real_df,syn_df,result_path):
-    #FIX!!!!
-    labels = np.concatenate((np.zeros(shape=(real_df_static.shape[0])),
-                           np.ones(shape=(syn_df_static.shape[0]))),axis=0)
+    labels = np.concatenate((np.zeros(shape=(real_df.subject_id.nunique())),
+                           np.ones(shape=(syn_df.subject_id.nunique()))),axis=0)
     #preprocessing for model
     df = pd.concat([real_df,syn_df],axis=0)
-    df = preprocess.one_hot_encoding(data=df,columns=['race','icd_code'])
+    #train test split
     sbj_train,sbj_test,y_train,y_test = preprocess.train_split(X=df.subject_id.unique(),y=labels,stratify=labels,train_size=.7)
     X_train,X_test = df[df.subject_id.isin(sbj_train)],df[df.subject_id.isin(sbj_test)]
-    X_train = [preprocess.get_static(X_train,columns=[x for x in X_train.columns if 'race' in x or x in ['gender','age','deceased']]).to_numpy().astype(float),
+    #one hot encoding of categoricals (fits to inputted total amount of columns)
+    X_train = preprocess.one_hot_encoding(data=X_train,columns=['race','icd_code'],column_sizes=[6,119])
+    X_test = preprocess.one_hot_encoding(data=X_test,columns=['race','icd_code'],column_sizes=[6,119])
+    #sets data to list of 2d static and 3d temporal data
+    X_train = [preprocess.get_static(X_train,columns=[x for x in X_train.columns if 'race' in x or x in ['gender','age','deceased']]),
                preprocess.df_to_3d(data=X_train,columns=[x for x in X_train.columns if 'icd_code' in x]).astype(float)]
-    X_test = [preprocess.get_static(X_test,columns=[x for x in X_test.columns if 'race' in x or x in ['gender','age','deceased']]).to_numpy().astype(float),
+    X_test = [preprocess.get_static(X_test,columns=[x for x in X_test.columns if 'race' in x or x in ['gender','age','deceased']]),
                preprocess.df_to_3d(data=X_test,columns=[x for x in X_test.columns if 'icd_code' in x]).astype(float)]
-    
-    #scale numerical variables!!!
+    #scales numerical variables (separate for train and test set to not leak information)
+    X_train[0][['age']] = preprocess.zero_one_scale(X_train[0][['age']])
+    X_test[0][['age']] = preprocess.zero_one_scale(X_test[0][['age']])
+    #set static dataframe as float numpy array for keras model input
+    X_train[0] = X_train[0].to_numpy().astype(float)
+    X_test[0] = X_test[0].to_numpy().astype(float)
 
-    #instantiate a Keras model
+    #fit a keras model and perform GoF test
     model = fidelity.gof_model()
     model.compile(optimizer='Adam',loss='binary_crossentropy',metrics='accuracy')
-    model.fit(X_train,y_train,batch_size=32,epochs=10,validation_split=.2)
+    model.fit(X_train,y_train,batch_size=32,epochs=1,validation_split=.2)
     pred = model.predict(X_test)
     test_stat,pval = fidelity.ks_test(real_pred=pred[y_test==0],syn_pred=pred[y_test==1])
 
@@ -141,16 +150,17 @@ if __name__ == '__main__':
 
     #REMOVE LATER!!!!!!!!!! ONLY NECESSARY FOR TESTING
     np.random.seed(123)
-    sample_size = 50
-    #split = np.random.choice(real_df.subject_id.unique(),int(real_df.subject_id.nunique()/2))
+    sample_size = 100
+    split = np.random.choice(real_df.subject_id.unique(),int(real_df.subject_id.nunique()/2))
     d = real_df.subject_id.unique()
     split1 = np.random.choice(d,sample_size)
     d = [x for x in d if x not in split1]
     split2 = np.random.choice(d,sample_size)
     syn_df = real_df[real_df.subject_id.isin(split1)]
     real_df = real_df[real_df.subject_id.isin(split2)]
+   
 
     #execute the different steps (or comment out if you do not wish to perform a step)
     #exec_descr_stats(real_df,syn_df,result_path)
     exec_tsne(real_df,syn_df,result_path)
-    #exec_gof(real_df,syn_df)
+    #exec_gof(real_df,syn_df,result_path) 
