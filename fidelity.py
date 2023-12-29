@@ -99,7 +99,7 @@ def exec_gof(real_df,syn_df,result_path):
         seq = preprocess.one_hot_3d(seq,cardinality=119+1)
         seq = seq[:,:,1:]
         seq = seq.astype(float)
-        static = preprocess.get_static(x,columns=[c for c in x.columns if c in ['gender','age','deceased','race']])
+        static = preprocess.get_static(x,columns=['gender','age','deceased','race'])
         static = preprocess.one_hot_encoding(static,['race'],column_sizes=[6])
         static[['age']] = preprocess.zero_one_scale(static[['age']])
         #static = static.to_numpy().astype(float)

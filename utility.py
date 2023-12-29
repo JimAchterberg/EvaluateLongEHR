@@ -25,30 +25,39 @@ if __name__=='__main__':
     syn_df = real_df[real_df.subject_id.isin(split1)]
     real_df = real_df[real_df.subject_id.isin(split2)]
 
-    # input data: static features + dynamic features up until t=t
-    # output data: dynamic features at t=t+1
-    # preprocess df : one hot encode categoricals, scale numericals
-    
+
    
     from utils import preprocess
-    seqs = []
+    X = []
+    Y = []
     for i in [real_df,syn_df]:
-        seq = preprocess.get_sequences(i,column='icd_code')
-        input_sequences = []
-        output = []
-        for sequence in seq:
+        #sequence and target preprocessing
+        seq = []
+        y = []
+        for sequence in preprocess.get_sequences(i,column='icd_code'):
             for t in range(len(sequence)-1):
-                input_sequences.append(sequence[:t+1])
-                output.append(sequence[t+1])
+                seq.append(sequence[:t+1])
+                y.append(sequence[t+1])
+        y = pd.DataFrame(y,columns=['target'])
+        y = preprocess.one_hot_encoding(y,columns=['target'],column_sizes=[119])
+        Y.append(y)
+        max_sequence_length = max(len(s) for s in seq)
+        seq = preprocess.sequences_to_3d(seq,maxlen=max_sequence_length,padding=-1)
+        seq = preprocess.one_hot_3d(seq,119+1)
+        seq = seq[:,:,1:]
+        seq = seq.astype(float)
+        #static data preprocessing
+        static = preprocess.get_static(i,columns=['age','gender','deceased','race']) 
+        static = preprocess.one_hot_encoding(static,columns=['race'],column_sizes=[6])
+        static[['age']] = preprocess.zero_one_scale(static[['age']])
+        #appending data to target list
+        x = [static,seq] 
+        X.append(x)
 
-        #get sequences to 3d numpy array and pad with -1
-        max_sequence_length = max(len(seq) for seq in input_sequences)
-        input_sequences = preprocess.sequences_to_3d(input_sequences, maxlen=max_sequence_length,padding=-1)
-        input_sequences = preprocess.one_hot_3d(input_sequences,119+1)
-        input_sequences = input_sequences[:,:,1:] #remove -1 category
-        seqs.append(input_sequences)
-    print(seqs)
-    print(seqs[0].shape)
+
+    X_real,X_syn = X[0],X[1]
+    #TODO: train test split!!!
+   
 
     
 
