@@ -56,7 +56,14 @@ if __name__=='__main__':
 
 
     X_real,X_syn = X[0],X[1]
-    #TODO: train test split!!!
+    #TODO: 
+    # train test split
+    # build sequence model
+    # build train/predict and evaluate script
+    
+    # preprocess for mortality model
+    # build mortality model
+    # build train/predict and evaluate script
    
 
     
