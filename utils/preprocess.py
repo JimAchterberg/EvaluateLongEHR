@@ -1,27 +1,32 @@
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
+from keras.preprocessing.sequence import pad_sequences
 #get static attribute table in which values are not repeated
 def get_static(data,columns,subject_idx='subject_id'):
     return data.groupby(subject_idx)[columns].first()
 
-#get 2d timevarying data to 3d numpy array
-def df_to_3d(data,columns,timestep_idx='seq_num',subject_idx='subject_id'):
+
+#takes list of lists of sequences as input and transforms into padded 3d numpy array
+def sequences_to_3d(list,maxlen,padding=-1):
+    return np.expand_dims(pad_sequences(list, maxlen=maxlen, padding='post',value=padding),-1)
+
+#get 2d timevarying data to 3d numpy array (necessary when data is multi-column)
+def df_to_3d(data,columns,pad_value=-1,timestep_idx='seq_num',subject_idx='subject_id'):
     t = data[timestep_idx].max()+1
     n = data[subject_idx].nunique()
-    data_3d = np.full(shape=(n,t,len(columns)),fill_value=-1)
+    data_3d = np.full(shape=(n,t,len(columns)),fill_value=pad_value)
     for idx,(_,subject) in enumerate(data.groupby(subject_idx)[columns]):
         #subject data has shape (t,k)
         data_3d[idx,:subject.shape[0],:] = subject
     return data_3d
 
+
 #one hot encode non-binary categoricals
 def one_hot_encoding(data,columns,column_sizes=None):
     for j,i in enumerate(columns):
         dummies = pd.get_dummies(data[i])
-        dummies = dummies.reset_index()
-        dummies = dummies.drop('index',axis=1)
-        
+        dummies = dummies.reset_index(drop=True)
         if column_sizes[j]>dummies.shape[1]:
             zeros = pd.DataFrame(np.zeros(shape=(data.shape[0],column_sizes[j]-dummies.shape[1])))
             dummies = pd.concat([dummies,zeros],axis=1)
@@ -43,10 +48,24 @@ def zero_one_scale(x):
     return (x-x.min())/(x.max()-x.min())
     
 
-
-    
-
-
 def train_split(X,y,stratify=None,train_size=.7):
     #create train test split stratified on syn/real labels
     return train_test_split(X,y,stratify=stratify,train_size=train_size)
+
+#turns 2d dataframe into list of lists of variable length sequences
+def get_sequences(df,column,subject_idx='subject_id'):
+    seq = []
+    for i in df[subject_idx].unique():
+        seq.append(df[df[subject_idx]==i][column].to_list())
+    return seq
+
+#one hot encode 3d categorical array, while ensuring correct cardinality by concatting zeros
+def one_hot_3d(data,cardinality):
+    n,t,k = data.shape
+    dummies = pd.get_dummies(data.flatten()) 
+    if dummies.shape[1]<cardinality:
+        dummies = dummies.reset_index()
+        zeros = pd.DataFrame(np.zeros((dummies.shape[0],cardinality-dummies.shape[1])))
+        dummies = pd.concat([dummies,zeros],axis=1)
+    dummies = dummies.to_numpy().reshape((n,t,dummies.shape[1]))
+    return dummies

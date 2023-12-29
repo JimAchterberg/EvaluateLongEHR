@@ -46,24 +46,18 @@ def exec_tsne(real_df,syn_df,result_path):
     #age gender deceased race
     static_distances = fidelity.static_gower_matrix(pd.concat([real_df_static,syn_df_static],axis=0),cat_features=[False,True,True,True])
 
-    # now get data to 3d array and find timevarying distances with dtw package
-    real_3d = preprocess.df_to_3d(data=real_df,columns=['icd_code'])
-    syn_3d = preprocess.df_to_3d(data=syn_df,columns=['icd_code'])
-
-    #only necessary for small sample checking since max timesteps might not be the same: pad df so they are of same length
-    pad_steps = max(real_3d.shape[1],syn_3d.shape[1]) - min(real_3d.shape[1],syn_3d.shape[1])
-    if real_3d.shape[1]<syn_3d.shape[1]:
-        pad = np.full((real_3d.shape[0],pad_steps,real_3d.shape[2]),-1)
-        real_3d = np.concatenate((real_3d,pad),axis=1)
-    else:
-        pad = np.full((syn_3d.shape[0],pad_steps,syn_3d.shape[2]),-1)
-        syn_3d = np.concatenate((syn_3d,pad),axis=1)
+    # now get data to -1 padded 3d array and find timevarying distances with dtw package
+    real_sequences = preprocess.get_sequences(real_df,'icd_code')
+    syn_sequences = preprocess.get_sequences(syn_df,'icd_code')
+    max_len = max(len(seq) for seq in real_sequences+syn_sequences)
+    real_sequences = preprocess.sequences_to_3d(real_sequences, maxlen=max_len,padding=-1)
+    syn_sequences = preprocess.sequences_to_3d(syn_sequences, maxlen=max_len,padding=-1)
 
     #ensure gower package recognizes categorical variables. it only recognizes non-numerical dtypes as categoricals when not explicitly specified
-    real_3d = real_3d.astype(str)
-    syn_3d = syn_3d.astype(str)
+    real_sequences = real_sequences.astype(str)
+    syn_sequences = syn_sequences.astype(str)
     #only icd_code is present
-    timevarying_distances = fidelity.mts_gower_matrix(data=np.concatenate((real_3d,syn_3d),axis=0))#,cat_features=[True])
+    timevarying_distances = fidelity.mts_gower_matrix(data=np.concatenate((real_sequences,syn_sequences),axis=0))#,cat_features=[True])
 
     # scale static and timevarying distances to similar range (while diagonal remains zero)
     static_distances = np.apply_along_axis(preprocess.zero_one_scale,0,static_distances)
@@ -90,25 +84,31 @@ def exec_tsne(real_df,syn_df,result_path):
 def exec_gof(real_df,syn_df,result_path):
     labels = np.concatenate((np.zeros(shape=(real_df.subject_id.nunique())),
                            np.ones(shape=(syn_df.subject_id.nunique()))),axis=0)
+    
     #preprocessing for model
     df = pd.concat([real_df,syn_df],axis=0)
+    t = max(df.seq_num)
     #train test split
     sbj_train,sbj_test,y_train,y_test = preprocess.train_split(X=df.subject_id.unique(),y=labels,stratify=labels,train_size=.7)
-    X_train,X_test = df[df.subject_id.isin(sbj_train)],df[df.subject_id.isin(sbj_test)]
-    #one hot encoding of categoricals (fits to inputted total amount of columns)
-    X_train = preprocess.one_hot_encoding(data=X_train,columns=['race','icd_code'],column_sizes=[6,119])
-    X_test = preprocess.one_hot_encoding(data=X_test,columns=['race','icd_code'],column_sizes=[6,119])
-    #sets data to list of 2d static and 3d temporal data
-    X_train = [preprocess.get_static(X_train,columns=[x for x in X_train.columns if 'race' in x or x in ['gender','age','deceased']]),
-               preprocess.df_to_3d(data=X_train,columns=[x for x in X_train.columns if 'icd_code' in x]).astype(float)]
-    X_test = [preprocess.get_static(X_test,columns=[x for x in X_test.columns if 'race' in x or x in ['gender','age','deceased']]),
-               preprocess.df_to_3d(data=X_test,columns=[x for x in X_test.columns if 'icd_code' in x]).astype(float)]
-    #scales numerical variables (separate for train and test set to not leak information)
-    X_train[0][['age']] = preprocess.zero_one_scale(X_train[0][['age']])
-    X_test[0][['age']] = preprocess.zero_one_scale(X_test[0][['age']])
-    #set static dataframe as float numpy array for keras model input
-    X_train[0] = X_train[0].to_numpy().astype(float)
-    X_test[0] = X_test[0].to_numpy().astype(float)
+    #we perform the exact same preprocessing for train and test set separately (to not leak information)
+    X = []
+    for i in [sbj_train,sbj_test]:
+        x = df[df.subject_id.isin(i)]
+        seq = preprocess.get_sequences(x,'icd_code')
+        seq = preprocess.sequences_to_3d(seq,maxlen=t,padding=-1)
+        seq = preprocess.one_hot_3d(seq,cardinality=119+1)
+        seq = seq[:,:,1:]
+        seq = seq.astype(float)
+        static = preprocess.get_static(x,columns=[c for c in x.columns if c in ['gender','age','deceased','race']])
+        static = preprocess.one_hot_encoding(static,['race'],column_sizes=[6])
+        static[['age']] = preprocess.zero_one_scale(static[['age']])
+        #static = static.to_numpy().astype(float)
+        x = [static,seq]
+        X.append(x)
+    X_train,X_test = X[0],X[1]
+
+
+
 
     #fit a keras model and perform GoF test
     model = fidelity.gof_model()
@@ -162,5 +162,5 @@ if __name__ == '__main__':
 
     #execute the different steps (or comment out if you do not wish to perform a step)
     #exec_descr_stats(real_df,syn_df,result_path)
-    exec_tsne(real_df,syn_df,result_path)
-    #exec_gof(real_df,syn_df,result_path) 
+    #exec_tsne(real_df,syn_df,result_path)
+    exec_gof(real_df,syn_df,result_path) 
