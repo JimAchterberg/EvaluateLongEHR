@@ -107,9 +107,6 @@ def exec_gof(real_df,syn_df,result_path):
         X.append(x)
     X_train,X_test = X[0],X[1]
 
-
-
-
     #fit a keras model and perform GoF test
     model = fidelity.gof_model()
     model.compile(optimizer='Adam',loss='binary_crossentropy',metrics='accuracy')

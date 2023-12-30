@@ -35,7 +35,7 @@ def one_hot_encoding(data,columns,column_sizes=None):
             column_names.append(str(i)+'_'+str(n))
         dummies.columns = column_names
         data = data.drop(i,axis=1)
-        data = data.reset_index()
+        data = data.reset_index(drop=True)
         data = pd.concat([data,dummies],axis=1)
     return data
 
@@ -53,11 +53,16 @@ def train_split(X,y,stratify=None,train_size=.7):
     return train_test_split(X,y,stratify=stratify,train_size=train_size)
 
 #turns 2d dataframe into list of lists of variable length sequences
-def get_sequences(df,column,subject_idx='subject_id'):
+def get_sequences(df,column,subject_idx='subject_id',return_subject_idx=False):
     seq = []
+    sbj = []
     for i in df[subject_idx].unique():
         seq.append(df[df[subject_idx]==i][column].to_list())
-    return seq
+        sbj.append(i)
+    if return_subject_idx:
+        return seq,sbj
+    else:
+        return seq
 
 #one hot encode 3d categorical array, while ensuring correct cardinality by concatting zeros
 def one_hot_3d(data,cardinality):
