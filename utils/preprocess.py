@@ -12,14 +12,16 @@ def sequences_to_3d(list,maxlen,padding=-1):
     return np.expand_dims(pad_sequences(list, maxlen=maxlen, padding='post',value=padding),-1)
 
 #get 2d timevarying data to 3d numpy array (necessary when data is multi-column)
-def df_to_3d(data,columns,pad_value=-1,timestep_idx='seq_num',subject_idx='subject_id'):
-    t = data[timestep_idx].max()+1
-    n = data[subject_idx].nunique()
-    data_3d = np.full(shape=(n,t,len(columns)),fill_value=pad_value)
-    for idx,(_,subject) in enumerate(data.groupby(subject_idx)[columns]):
-        #subject data has shape (t,k)
-        data_3d[idx,:subject.shape[0],:] = subject
-    return data_3d
+def df_to_3d(df,cols,subject_idx='subject_id',timestep_idx='seq_num',padding=-1,pad_to=None):
+    #check if we pad to prespecified number of timesteps
+    if pad_to == None:
+        t = max(df[timestep_idx])
+    else: 
+        t = pad_to
+    seq = np.full((df[subject_idx].nunique(),t,len(cols)),padding)
+    for idx,(_,subject) in enumerate(df.groupby(subject_idx)[cols]):
+        seq[idx,:subject.shape[0],:] = subject
+    return seq
 
 
 #one hot encode non-binary categoricals

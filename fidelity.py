@@ -37,48 +37,32 @@ def exec_descr_stats(real_df,syn_df,result_path):
 
 #executes the tsne step
 def exec_tsne(real_df,syn_df,result_path):
-    #get static feature dataframes
-    real_df_static = preprocess.get_static(data=real_df,columns=['age','gender','deceased','race'])
-    syn_df_static = preprocess.get_static(data=syn_df,columns=['age','gender','deceased','race'])
-    #separately find static and timevarying distances, first find static distances through gower package
-    real_df_static = real_df_static.astype(float)
-    syn_df_static = syn_df_static.astype(float)
-    #age gender deceased race
-    static_distances = fidelity.static_gower_matrix(pd.concat([real_df_static,syn_df_static],axis=0),cat_features=[False,True,True,True])
+    df = pd.concat([real_df,syn_df],axis=0)
+    static = preprocess.get_static(df,['age','gender','deceased','race']).astype(float)
+    seq = preprocess.df_to_3d(df,'icd_code',padding=-1).astype(str)
 
-    # now get data to -1 padded 3d array and find timevarying distances with dtw package
-    real_sequences = preprocess.get_sequences(real_df,'icd_code')
-    syn_sequences = preprocess.get_sequences(syn_df,'icd_code')
-    max_len = max(len(seq) for seq in real_sequences+syn_sequences)
-    real_sequences = preprocess.sequences_to_3d(real_sequences, maxlen=max_len,padding=-1)
-    syn_sequences = preprocess.sequences_to_3d(syn_sequences, maxlen=max_len,padding=-1)
-
-    #ensure gower package recognizes categorical variables. it only recognizes non-numerical dtypes as categoricals when not explicitly specified
-    real_sequences = real_sequences.astype(str)
-    syn_sequences = syn_sequences.astype(str)
-    #only icd_code is present
-    timevarying_distances = fidelity.mts_gower_matrix(data=np.concatenate((real_sequences,syn_sequences),axis=0))#,cat_features=[True])
+    #find distance matrices
+    static_distances = fidelity.static_gower_matrix(static,cat_features=[False,True,True,True])
+    timevarying_distances = fidelity.mts_gower_matrix(seq)#,cat_features=[True])
 
     # scale static and timevarying distances to similar range (while diagonal remains zero)
     static_distances = np.apply_along_axis(preprocess.zero_one_scale,0,static_distances)
     timevarying_distances = np.apply_along_axis(preprocess.zero_one_scale,0,timevarying_distances)
 
     # # take weighted sum of static and timevarying distances
-    distance_matrix = (len(real_df_static.columns)/len(real_df))*static_distances + \
-        ((len(real_df)-len(real_df_static))/len(real_df))*timevarying_distances
+    distance_matrix = ((len(static.columns))/len(df.columns))*static_distances + \
+        (seq.shape[2]/len(df.columns))*timevarying_distances
     filename = 'distance_matrix.csv'
     pd.DataFrame(distance_matrix).to_csv(os.path.join(result_path,filename))
 
     # #compute and plot tsne projections with synthetic/real labels as colors
-    labels = np.concatenate((np.zeros(shape=(real_df_static.shape[0])),
-                           np.ones(shape=(syn_df_static.shape[0]))),axis=0)
+    labels = np.concatenate((np.zeros(real_df.subject_id.nunique()),
+                           np.ones(syn_df.subject_id.nunique())),axis=0)
     tsne_plot = fidelity.tsne(distance_matrix,labels)
     #tsne_plot.title('tSNE plot of synthetic/real samples')
     filename = 'tsne.png'
     tsne_plot.savefig(os.path.join(result_path,filename))
     tsne_plot.show()
-
-   
     
 #executes gof step
 def exec_gof(real_df,syn_df,result_path):
@@ -87,31 +71,33 @@ def exec_gof(real_df,syn_df,result_path):
     
     #preprocessing for model
     df = pd.concat([real_df,syn_df],axis=0)
-    t = max(df.seq_num)
-    #train test split
-    sbj_train,sbj_test,y_train,y_test = preprocess.train_split(X=df.subject_id.unique(),y=labels,stratify=labels,train_size=.7)
-    #we perform the exact same preprocessing for train and test set separately (to not leak information)
+    #one hot encode before splitting data to ensure proper encoding
+    for col in ['race','icd_code']:
+        dummies = pd.get_dummies(df[col],prefix=col)
+        df = df.drop(col,axis=1)
+        df = pd.concat([df,dummies],axis=1)
+    
+    seq = preprocess.df_to_3d(df,cols=[x for x in df.columns if 'icd_code' in x],padding=0)
+    static = preprocess.get_static(df,columns=[x for x in df.columns if 'icd_code' not in x])
+
+    #pick 70% random indices stratified on synthetic/real labels
+    train_idx,test_idx,y_train,y_test = preprocess.train_split(X=np.arange(seq.shape[0]),y=labels,stratify=labels)
     X = []
-    for i in [sbj_train,sbj_test]:
-        x = df[df.subject_id.isin(i)]
-        seq = preprocess.get_sequences(x,'icd_code')
-        seq = preprocess.sequences_to_3d(seq,maxlen=t,padding=-1)
-        seq = preprocess.one_hot_3d(seq,cardinality=119+1)
-        seq = seq[:,:,1:]
-        seq = seq.astype(float)
-        static = preprocess.get_static(x,columns=['gender','age','deceased','race'])
-        static = preprocess.one_hot_encoding(static,['race'],column_sizes=[6])
-        static[['age']] = preprocess.zero_one_scale(static[['age']])
-        #static = static.to_numpy().astype(float)
-        x = [static,seq]
-        X.append(x)
-    X_train,X_test = X[0],X[1]
+    for idx in [train_idx,test_idx]:
+        #select train/test data
+        x_seq = seq[idx]
+        x_static = static.iloc[idx]
+        #zero one scale numerical variables
+        x_static[['age']] = preprocess.zero_one_scale(x_static[['age']])
+        #append data to data list
+        X.append([x_static.to_numpy().astype(float),x_seq.astype(float)])
+    
 
     #fit a keras model and perform GoF test
     model = fidelity.gof_model()
     model.compile(optimizer='Adam',loss='binary_crossentropy',metrics='accuracy')
-    model.fit(X_train,y_train,batch_size=32,epochs=1,validation_split=.2)
-    pred = model.predict(X_test)
+    model.fit(X[0],y_train,batch_size=32,epochs=1,validation_split=.2)
+    pred = model.predict(X[1])
     test_stat,pval = fidelity.ks_test(real_pred=pred[y_test==0],syn_pred=pred[y_test==1])
 
     #additional numbers for final report
@@ -122,17 +108,16 @@ def exec_gof(real_df,syn_df,result_path):
     correct_syn = np.sum((y_test.flatten()==np.round(pred).flatten())[y_test.flatten()==1])
 
     #make a report of results
-    columns = ['Correct','False','Total']
-    rows = ['Real','Synthetic','Total','Accuracy','p_value']
-    entries = [[correct_real,total_real-correct_real,total_real],[correct_syn,total_syn-correct_syn,total_syn],\
-                [correct_real+correct_syn,y_test.shape[0]-(correct_real+correct_syn),y_test.shape[0]],\
-                [np.nan,np.nan,accuracy],[np.nan,np.nan,pval]]
-    gof = pd.DataFrame(entries,columns=columns,index=rows)
-    print(gof)
-    filename = 'gof_test_report.csv'
-    gof.to_csv(os.path.join(result_path,filename))
+    filename = 'gof_test_report.txt'
+    with open(os.path.join(result_path,filename),'w') as f:
+        f.write('accuracy: ' + str(accuracy) + '\n')
+        f.write('correct real: ' + str(correct_real) + '\n')
+        f.write('correct synthetic: ' + str(correct_syn) + '\n')
+        f.write('total real: ' + str(total_real) + '\n')
+        f.write('total synthetic: ' + str(total_syn) + '\n')
+        f.write('p-value: ' + str(pval) + '\n')
 
-
+    
 if __name__ == '__main__':
     #load real and synthetic data
     path = 'C:/Users/Jim/Documents/thesis_paper/data/mimic_iv_preprocessed'
