@@ -1,7 +1,11 @@
 import keras 
 from keras import layers
 import numpy as np
+
 from sklearn.metrics import accuracy_score,roc_auc_score
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+
 import pandas as pd
 #build utility model
 class trajectory_RNN_simple(keras.Model):
@@ -72,3 +76,20 @@ class mortality_RNN_simple(keras.Model):
         x = self.process_1(x)
         x = self.process_2(x)
         return self.classify(x)
+    
+class mortality_LR(LogisticRegression):
+    def __init__(self, penalty='elasticnet', l1_ratio=0.5,):
+        super().__init__(
+            penalty=penalty,
+            solver='saga',  # 'saga' solver supports both 'l1' and 'elasticnet' penalties
+            l1_ratio=l1_ratio,
+            max_iter=1000
+        )
+        
+class mortality_RF(RandomForestClassifier):
+    def __init__(self, n_estimators=100,max_depth=None):
+        super().__init__(
+            n_estimators=n_estimators,
+            max_depth=max_depth
+        )
+    
