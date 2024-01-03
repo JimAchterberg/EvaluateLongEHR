@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import pickle
 import numpy as np
-from utils import preprocess,utility,fidelity
+from utils import utility,fidelity
 
 def GoF(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path):
         #data selection
@@ -18,7 +18,7 @@ def GoF(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path):
         X_train[0],X_train[1],X_test[0],X_test[1],y_train,y_test = data_list
 
         #fit a keras model and perform GoF test
-        model = fidelity.gof_model()
+        model = utility.GoF_RNN()
         model.compile(optimizer='Adam',loss='binary_crossentropy',metrics='accuracy')
         model.fit(X_train,y_train,batch_size=32,epochs=1,validation_split=.2)
         pred = model.predict(X_test)

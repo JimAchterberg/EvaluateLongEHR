@@ -1,13 +1,32 @@
 import keras 
 from keras import layers
 import numpy as np
-
 from sklearn.metrics import accuracy_score,roc_auc_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
-
 import pandas as pd
-#build utility model
+
+#model for GoF testing
+class GoF_RNN(keras.Model):
+    def __init__(self):
+        super().__init__()
+        self.dense = layers.Dense(100,activation='relu')
+        self.recurrent = layers.LSTM(100,activation='relu')
+        self.concat = layers.Concatenate(axis=1)
+        self.process_1 = layers.Dense(100,activation='relu')
+        self.process_2 = layers.Dense(50,activation='relu')
+        self.classify = layers.Dense(1,activation='sigmoid')
+
+    def call(self, inputs):
+        attributes,longitudinal = inputs
+        attr = self.dense(attributes)
+        long = self.recurrent(longitudinal)
+        x = self.concat([attr,long])
+        x = self.process_1(x)
+        x = self.process_2(x)
+        return self.classify(x)
+
+#model for patient trajectory forecasting
 class trajectory_RNN_simple(keras.Model):
     def __init__(self,output_size):
         super().__init__()
@@ -58,6 +77,7 @@ def trajectory_input_output(x,max_t):
     y = np.concatenate(y)
     return x,y
 
+#models for mortality prediction
 class mortality_RNN_simple(keras.Model):
     def __init__(self):
         super().__init__()
