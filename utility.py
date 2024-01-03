@@ -127,7 +127,6 @@ def mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path,model
 
     elif model=='LR':
         #turn sequence data into count features and then to single array
-        
         x = []
         for data in [X_real_tr,X_real_te,X_syn_tr,X_syn_te]:
              x0,x1 = data 
@@ -187,19 +186,8 @@ if __name__=='__main__':
 
     #trajectory_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path)
     #GoF(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path)
-    mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path,model='RNN')
-    mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path,model='RF')
-    mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path,model='LR')
-
-    
-
-
-
-
-
-
-
-
-
+    #mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path,model='RNN')
+    #mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path,model='RF')
+    #mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path,model='LR')
 
     
