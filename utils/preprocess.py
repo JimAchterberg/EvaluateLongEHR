@@ -76,3 +76,28 @@ def one_hot_3d(data,cardinality):
         dummies = pd.concat([dummies,zeros],axis=1)
     dummies = dummies.to_numpy().reshape((n,t,dummies.shape[1]))
     return dummies
+
+def trajectory_input_output(x,max_t):
+    static = x[0]
+    seq = x[1]
+    timesteps = np.max(np.where(np.any(seq!=0,axis=2),np.arange(seq.shape[1]),-1),axis=1)
+    seqs = []
+    stat = []
+    y = []
+    for t in range(1,max_t-1):
+        #filter on rows which have max timesteps>=t+1
+        x_seq = seq[timesteps>=t+1]
+        x_stat = static[timesteps>=t+1]
+        #input data is data up until t=t from seq (padded to end) and the corresponding static data
+        stat.append(x_stat)
+        x_seq = x_seq[:,:t,:]
+        pad_size = max_t-x_seq.shape[1]
+        x_seq = np.pad(x_seq,((0,0),(0,pad_size),(0,0)),'constant',constant_values=0)
+        seqs.append(x_seq)
+        #output data is seq at t=t+1
+        y.append(seq[timesteps>=t+1][:,t+1,:])
+    stat = pd.concat(stat,ignore_index=True)
+    seqs = np.concatenate(seqs)
+    x = [stat,seqs]
+    y = np.concatenate(y)
+    return x,y

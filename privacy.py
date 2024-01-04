@@ -1,35 +1,13 @@
 #script for evaluating Attribute Inference Attack on sensitive attributes
 #attributes: age,gender,race
 
-#take preprocessed data 
-#use all different combinations of the three sensitive attributes as labels:
-# (age), (gender), (race), (age,gender), (age,race), (gender,race), (age,gender,race)
-#use all non-label data as input
-
 import os 
 import pandas as pd
 import pickle
 import numpy as np
-from utils import privacy
+from utils import metrics,models
 
-if __name__=='__main__':  
-#load real and synthetic data
-    path = 'C:/Users/Jim/Documents/thesis_paper/data/mimic_iv_preprocessed'
-    version = 'v0.0'
-    load_path = os.path.join(path,'preprocessed',version)
-    result_path = os.path.join('results',version)
-    if not os.path.exists(result_path):
-        os.makedirs(result_path)
-    files = ['X_real_tr','X_real_te','X_syn_tr','X_syn_te']
-    data = []
-    for file in files:
-        file = file+'.pkl'
-        with open(os.path.join(load_path,file),'rb') as f:
-            data.append(pickle.load(f))
-    X_real_tr,X_real_te,X_syn_tr,X_syn_te = data[0],data[1],data[2],data[3]
-
-
-    #-----------------------------------------------------------------------------------
+def privacy_AIA(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path):
     #ensure we are working on a copy of the input 
     def return_copy(df):
          return [df[0].copy(),np.copy(df[1])]
@@ -61,30 +39,30 @@ if __name__=='__main__':
         y_real_tr,y_real_te,y_syn_tr,y_syn_te = y 
 
         #build the model, which takes account of input labels and builds output layer accordingly
-        model = privacy.privacy_RNN(labels,nodes_at_input=100)
+        model = models.privacy_RNN(labels,nodes_at_input=100)
         #specify the loss functions and metrics we require
         #note that the output layer names are output_1 , output_2, output_3 and are dynamic not fixed
         #changing this is TBD
         losses = {}
-        metrics = {}
+        metric = {}
         var_count = 1
         if 'age' in labels:
             key = 'output_'+str(var_count)
             losses[key] = 'mse'
-            metrics[key] = 'mse'
+            metric[key] = 'mse'
             var_count+=1
         if 'gender' in labels:
             key = 'output_'+str(var_count)
             losses[key] = 'binary_crossentropy'
-            metrics[key] = 'accuracy'
+            metric[key] = 'accuracy'
             var_count+=1
         if sum(l.count('race') for l in labels)>0:
             key = 'output_'+str(var_count)
             losses[key] = 'categorical_crossentropy'
-            metrics[key] = 'accuracy'
+            metric[key] = 'accuracy'
 
 
-        model.compile(optimizer='Adam',loss=losses,metrics=metrics)
+        model.compile(optimizer='Adam',loss=losses,metrics=metric)
 
         #keras model expects a list of the different outputs instead of a concatenated array
         #also take care of turning them into float numpy arrays
@@ -113,18 +91,38 @@ if __name__=='__main__':
             f.write('Labels for this iteration: '+str(labels)+'\n')
             var_count = 0
             if 'age' in labels:
-                metric = privacy.mape(y_real_te[var_count],preds[var_count])
+                metric = metrics.mape(y_real_te[var_count],preds[var_count])
                 f.write('Age MAPE is: '+str(metric)+'\n')
                 var_count+=1
             if 'gender' in labels:
-                metric = privacy.accuracy(y_real_te[var_count],np.round(preds[var_count]))
+                metric = metrics.accuracy(y_real_te[var_count],np.round(preds[var_count]))
                 f.write('gender accuracy is: '+str(metric)+'\n')
                 var_count+=1
             if sum(x.count('race') for x in labels)>0:
-                metric = privacy.accuracy(np.concatenate(y_real_te[var_count:],axis=1),
+                metric = metrics.accuracy(np.concatenate(y_real_te[var_count:],axis=1),
                                         np.squeeze(np.round(preds[var_count:]),0))
                 f.write('race accuracy is: '+str(metric)+'\n')
             f.write('\n')
+
+
+if __name__=='__main__':  
+#load real and synthetic data
+    path = 'C:/Users/Jim/Documents/thesis_paper/data/mimic_iv_preprocessed'
+    version = 'v0.0'
+    load_path = os.path.join(path,'preprocessed',version)
+    result_path = os.path.join('results',version)
+    if not os.path.exists(result_path):
+        os.makedirs(result_path)
+    files = ['X_real_tr','X_real_te','X_syn_tr','X_syn_te']
+    data = []
+    for file in files:
+        file = file+'.pkl'
+        with open(os.path.join(load_path,file),'rb') as f:
+            data.append(pickle.load(f))
+    X_real_tr,X_real_te,X_syn_tr,X_syn_te = data[0],data[1],data[2],data[3]
+
+    privacy_AIA(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path)
+    
             
             
 

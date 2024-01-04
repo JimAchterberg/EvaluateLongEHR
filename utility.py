@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import pickle
 import numpy as np
-from utils import utility,fidelity
+from utils import preprocess,metrics,models
 
 def GoF(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path):
         #data selection
@@ -18,14 +18,14 @@ def GoF(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path):
         X_train[0],X_train[1],X_test[0],X_test[1],y_train,y_test = data_list
 
         #fit a keras model and perform GoF test
-        model = utility.GoF_RNN()
+        model = models.GoF_RNN()
         model.compile(optimizer='Adam',loss='binary_crossentropy',metrics='accuracy')
         model.fit(X_train,y_train,batch_size=32,epochs=1,validation_split=.2)
         pred = model.predict(X_test)
-        test_stat,pval = fidelity.ks_test(real_pred=pred[y_test==0],syn_pred=pred[y_test==1])
+        test_stat,pval = metrics.ks_test(real_pred=pred[y_test==0],syn_pred=pred[y_test==1])
 
         #additional numbers for final report
-        accuracy = fidelity.accuracy(y_test,np.round(pred))
+        accuracy = metrics.accuracy(y_test,np.round(pred))
         total_real = y_test.shape[0]-sum(y_test)
         total_syn = sum(y_test)
         correct_real = np.sum((y_test.flatten()==np.round(pred).flatten())[y_test.flatten()==0])
@@ -42,12 +42,10 @@ def GoF(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path):
             f.write('p-value: ' + str(pval) + '\n')
 
 def trajectory_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path):
-        #get input/ouput pairs
-        max_t = X_real_tr[1].shape[1]
         x = []
         y = []
         for data in [X_real_tr,X_real_te,X_syn_tr,X_syn_te]:
-            x_,y_ = utility.trajectory_input_output(data)
+            x_,y_ = preprocess.trajectory_input_output(data)
             x.append(x_)
             y.append(y_)
         X_real_tr,X_real_te,X_syn_tr,X_syn_te = x
@@ -63,8 +61,8 @@ def trajectory_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path):
                         y_real_tr,y_real_te,y_syn_tr,y_syn_te = data_list
 
         #build model and predict
-        real_model = utility.trajectory_RNN_simple(output_size=y_real_tr.shape[1])
-        syn_model = utility.trajectory_RNN_simple(output_size=y_syn_tr.shape[1])
+        real_model = models.trajectory_RNN_simple(output_size=y_real_tr.shape[1])
+        syn_model = models.trajectory_RNN_simple(output_size=y_syn_tr.shape[1])
         real_model.compile(optimizer='Adam',loss='categorical_crossentropy',metrics='accuracy')
         syn_model.compile(optimizer='Adam',loss='categorical_crossentropy',metrics='accuracy')
         real_model.fit(X_real_tr,y_real_tr,batch_size=32,epochs=1,validation_split=.2)
@@ -75,8 +73,8 @@ def trajectory_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path):
         labels = np.argmax(y_real_te,axis=1)
         real_preds_labels = np.argmax(real_preds,axis=1)
         syn_preds_labels = np.argmax(syn_preds,axis=1)
-        real_acc = utility.accuracy(labels,real_preds_labels)
-        syn_acc = utility.accuracy(labels,syn_preds_labels)
+        real_acc = metrics.accuracy(labels,real_preds_labels)
+        syn_acc = metrics.accuracy(labels,syn_preds_labels)
         filename = 'trajectory_pred_accuracy.txt'
         with open(os.path.join(result_path,filename),'w') as f:
             f.write('Real accuracy: ' + str(real_acc) + '\n')
@@ -116,11 +114,11 @@ def mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path,model
     
     if model=='RNN':
         #build model and predict
-        real_model = utility.mortality_RNN_simple()
+        real_model = models.mortality_RNN_simple()
         real_model.compile(optimizer='Adam',loss='binary_crossentropy',metrics='accuracy')
         real_model.fit(X_real_tr,y_real_tr,batch_size=32,epochs=1,validation_split=.2)
         real_preds = real_model.predict(X_real_te)
-        syn_model = utility.mortality_RNN_simple()
+        syn_model = models.mortality_RNN_simple()
         syn_model.compile(optimizer='Adam',loss='binary_crossentropy',metrics='accuracy')
         syn_model.fit(X_syn_tr,y_syn_tr,batch_size=32,epochs=1,validation_split=.2)
         syn_preds = real_model.predict(X_real_te)
@@ -133,10 +131,10 @@ def mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path,model
              x1 = np.sum(x1,axis=1)
              x.append(np.concatenate((x0,x1),axis=1))
         X_real_tr,X_real_te,X_syn_tr,X_syn_te = x
-        real_model = utility.mortality_LR(penalty='elasticnet',l1_ratio=.5)
+        real_model = models.mortality_LR(penalty='elasticnet',l1_ratio=.5)
         real_model.fit(X_real_tr,y_real_tr.flatten())
         real_preds = real_model.predict(X_real_te)
-        syn_model = utility.mortality_LR(penalty='elasticnet',l1_ratio=.5)
+        syn_model = models.mortality_LR(penalty='elasticnet',l1_ratio=.5)
         syn_model.fit(X_syn_tr,y_syn_tr.flatten())
         syn_preds = syn_model.predict(X_real_te)
     else:
@@ -147,18 +145,18 @@ def mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path,model
              x1 = np.sum(x1,axis=1)
              x.append(np.concatenate((x0,x1),axis=1))
         X_real_tr,X_real_te,X_syn_tr,X_syn_te = x
-        real_model = utility.mortality_RF(n_estimators=100,max_depth=None)
+        real_model = models.mortality_RF(n_estimators=100,max_depth=None)
         real_model.fit(X_real_tr,y_real_tr.flatten())
         real_preds = real_model.predict(X_real_te)
-        syn_model = utility.mortality_RF(n_estimators=100,max_depth=None)
+        syn_model = models.mortality_RF(n_estimators=100,max_depth=None)
         syn_model.fit(X_syn_tr,y_syn_tr.flatten())
         syn_preds = syn_model.predict(X_real_te)
 
     #evaluate results
-    real_acc = utility.accuracy(y_real_te,np.round(real_preds))
-    syn_acc = utility.accuracy(y_real_te,np.round(syn_preds))
-    real_auc = utility.auc(y_real_te,real_preds)
-    syn_auc = utility.auc(y_real_te,syn_preds)
+    real_acc = metrics.accuracy(y_real_te,np.round(real_preds))
+    syn_acc = metrics.accuracy(y_real_te,np.round(syn_preds))
+    real_auc = metrics.auc(y_real_te,real_preds)
+    syn_auc = metrics.auc(y_real_te,syn_preds)
     class_balance = sum(y_real_te)/len(y_real_te)
     filename = model+'_'+'mortality_pred_accuracy.txt'
     with open(os.path.join(result_path,filename),'w') as f:
