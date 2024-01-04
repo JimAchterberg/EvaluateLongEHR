@@ -3,6 +3,14 @@ from keras import layers
 import numpy as np 
 
 from matplotlib import pyplot as plt
+import tensorflow as tf
+from sklearn.metrics import mean_absolute_percentage_error,accuracy_score
+
+def mape(true,pred):
+    return mean_absolute_percentage_error(true,pred)
+
+def accuracy(true,pred):
+    return accuracy_score(true,pred)
 
 class privacy_RNN(keras.Model):
     def __init__(self,labels,nodes_at_input=100):
@@ -35,35 +43,43 @@ class privacy_RNN(keras.Model):
         if self.race_size>0:
             outputs.append(self.output_race(x))
         return outputs
-    
-#if __name__=='__main__':
-    # labels = ['age','gender','race_0','race_1','race_2']
-    # race_size = sum(l.count('race') for l in labels)
-    # model = privacy_RNN(labels)
 
-    # xlong = np.random.normal(0,1,(100,10,5))
-    # xattr = np.random.normal(0,1,(100,3))
-    # yage = np.random.normal(50,20,(100,1))
-    # ygender = np.random.randint(0,2,(100,1))
-    # yrace = np.random.randint(0,2,(100,race_size))
+if __name__=='__main__':
+    labels = ['gender']
+    race_size = sum(l.count('race') for l in labels)
+    model = privacy_RNN(labels)
 
-    # #custom losses and metrics
-    # losses = {}
-    # metrics = {}
-    # if 'age' in labels:
-    #     losses['output_1'] = 'mse'
-    #     metrics['output_1'] = 'mse'
-    # if 'gender' in labels:
-    #     losses['output_2'] = 'binary_crossentropy'
-    #     metrics['output_2'] = 'accuracy'
-    # if race_size>0:
-    #     losses['output_3'] = 'categorical_crossentropy'
-    #     metrics['output_3'] = 'accuracy'
+    xlong = np.random.normal(0,1,(100,10,5))
+    xattr = np.random.normal(0,1,(100,3))
+    yage = np.random.normal(50,20,(100,1))
+    ygender = np.random.randint(0,2,(100,1))
+    yrace = np.random.randint(0,2,(100,race_size))
+
+    #custom losses and metrics
+    losses = {}
+    metrics = {}
+
+    #names are not customizable, they are always output_1,output_2,output_3
+    var_count = 1
+    if 'age' in labels:
+        key = 'output'+'_'+str(var_count)
+        losses[key] = 'mse'
+        metrics[key] = 'mse'
+        var_count+=1
+    if 'gender' in labels:
+        key = 'output'+'_'+str(var_count)
+        losses[key] = 'binary_crossentropy'
+        metrics[key] = 'accuracy'
+        var_count+=1
+    if race_size>0:
+        key = 'output'+'_'+str(var_count)
+        losses[key] = 'categorical_crossentropy'
+        metrics[key] = 'accuracy'
 
 
-    # model.compile(optimizer='Adam',loss=losses,metrics=metrics)
-    # fitted_model = model.fit([xattr,xlong],[yage,ygender,yrace],epochs=100,validation_split=.2)
-    # preds = model.predict([xattr,xlong])
+    model.compile(optimizer='Adam',loss=losses,metrics=metrics)
+    fitted_model = model.fit([xattr,xlong],[ygender],epochs=100,validation_split=.2)
+    preds = model.predict([xattr,xlong])
 
 
 

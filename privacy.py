@@ -37,6 +37,11 @@ if __name__=='__main__':
     X_real_te = return_copy(X_real_te)
     X_syn_tr = return_copy(X_syn_tr)
     X_syn_te = return_copy(X_syn_te)
+
+    #clear output file 
+    filename = 'privacy_AIA.txt'
+    with open(os.path.join(result_path,filename),'w') as f:
+        pass
     #perform AIA for every label combination
     for labels in [['age'],['gender'],['race'],['age','gender'],['age','race'],['gender','race'],['age','gender','race']]:
         #ensure we are taking the one hot encoded columns
@@ -51,44 +56,75 @@ if __name__=='__main__':
             #find input data
             x0 = data[0].drop(labels,axis=1)
             x0 = x0.to_numpy().astype(float)
-            x.append([x0,data[1]]) 
+            x.append([x0,data[1].astype(float)]) 
         x_real_tr,x_real_te,x_syn_tr,x_syn_te = x 
         y_real_tr,y_real_te,y_syn_tr,y_syn_te = y 
 
         #build the model, which takes account of input labels and builds output layer accordingly
         model = privacy.privacy_RNN(labels,nodes_at_input=100)
         #specify the loss functions and metrics we require
-        #note that the output layer names are output_1:age, output_2:gender, output_3:race
+        #note that the output layer names are output_1 , output_2, output_3 and are dynamic not fixed
         #changing this is TBD
         losses = {}
         metrics = {}
+        var_count = 1
         if 'age' in labels:
-            losses['output_1'] = 'mse'
-            metrics['output_1'] = 'mse'
+            key = 'output_'+str(var_count)
+            losses[key] = 'mse'
+            metrics[key] = 'mse'
+            var_count+=1
         if 'gender' in labels:
-            losses['output_2'] = 'binary_crossentropy'
-            metrics['output_2'] = 'accuracy'
+            key = 'output_'+str(var_count)
+            losses[key] = 'binary_crossentropy'
+            metrics[key] = 'accuracy'
+            var_count+=1
         if sum(l.count('race') for l in labels)>0:
-            losses['output_3'] = 'categorical_crossentropy'
-            metrics['output_3'] = 'accuracy'
+            key = 'output_'+str(var_count)
+            losses[key] = 'categorical_crossentropy'
+            metrics[key] = 'accuracy'
+
 
         model.compile(optimizer='Adam',loss=losses,metrics=metrics)
 
         #keras model expects a list of the different outputs instead of a concatenated array
         #also take care of turning them into float numpy arrays
         y_list = []
-        for data in [y_real_tr,y_real_te,y_syn_tr,y_real_tr]:
+        for data in [y_real_tr,y_real_te,y_syn_tr,y_syn_te]:
             output_list = []
             for label in [x for x in labels if 'race' not in x]:
                 output_list.append(data[label].to_numpy().astype(float))
             if sum(x.count('race') for x in labels)>0:
                 output_list.append(data[[x for x in labels if 'race' in x]].to_numpy().astype(float))
             y_list.append(output_list)
-        y_real_tr,y_real_te,y_syn_tr,y_real_tr = y_list
+        y_real_tr,y_real_te,y_syn_tr,y_syn_te = y_list
+        
 
         #we train the model on synthetic data and assess on real test set
         #also possible: compare with real trained model to assess what the cause of bad/good prediction is
-        model.fit(x_syn_tr,y_syn_tr,epochs=1,batch_size=32,validation_split=.2)
+        model.fit(x_syn_tr,y_syn_tr,epochs=1,batch_size=32,validation_split=.2,)
         preds = model.predict(x_real_te)
 
+        #TBD: save model logging (i.e. plot of validation loss) and model checkpoints
+
         #evaluate predictions: compute mape for age, accuracy for gender and confusion matrix metrics for race
+        
+        with open(os.path.join(result_path,filename),'a') as f:
+
+            f.write('Labels for this iteration: '+str(labels)+'\n')
+            var_count = 0
+            if 'age' in labels:
+                metric = privacy.mape(y_real_te[var_count],preds[var_count])
+                f.write('Age MAPE is: '+str(metric)+'\n')
+                var_count+=1
+            if 'gender' in labels:
+                metric = privacy.accuracy(y_real_te[var_count],np.round(preds[var_count]))
+                f.write('gender accuracy is: '+str(metric)+'\n')
+                var_count+=1
+            if sum(x.count('race') for x in labels)>0:
+                metric = privacy.accuracy(np.concatenate(y_real_te[var_count:],axis=1),
+                                        np.squeeze(np.round(preds[var_count:]),0))
+                f.write('race accuracy is: '+str(metric)+'\n')
+            f.write('\n')
+            
+            
+
