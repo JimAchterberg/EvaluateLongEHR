@@ -12,7 +12,8 @@ import numpy as np
 from utils import preprocess
 import pickle
 
-def general_preprocess(real_df,syn_df,save_path=None):
+#preprocess data for evaluation
+def preprocess_eval(real_df,syn_df,save_path=None):
     #ONE HOT ENCODE
     df = pd.concat([real_df,syn_df],axis=0)
     for col in ['race','icd_code']:
@@ -69,9 +70,20 @@ if __name__=='__main__':
     cols = ['subject_id','seq_num','icd_code','gender','age','deceased','race']
     real_df = pd.read_csv(os.path.join(load_path,real_file),usecols=cols)
 
+    
+
     save_path = os.path.join(path,'preprocessed',version)
     if not os.path.exists(save_path):
         os.makedirs(save_path)
+
+    #save path for preprocessed data for evaluation:
+    #general path
+    #preprocessed
+    #model - real,dgan,cpar
+    #version 
+    #actual data
+
+    
 
     #------------------------------------------------------------------------------
     #TEMP FOR TESTING
@@ -87,5 +99,5 @@ if __name__=='__main__':
 
     #------------------------------------------------------------------------------
     #PREPROCESS AND SAVE DATA
-    general_preprocess(real_df,syn_df,save_path)
+    preprocess_eval(real_df,syn_df,save_path)
 

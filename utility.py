@@ -81,9 +81,7 @@ def trajectory_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path):
             f.write('Synthetic accuracy: ' + str(syn_acc) + '\n')
             
 def mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path,model='RNN'):
-    if model not in ['RNN','LR','RF']:
-         raise Exception('please input RNN, LR or RF as model')
-    
+    assert model  in ['RNN','LR','RF']
     #ensure we are working on copies as to not alter the original data
     def return_copy(df):
          return [df[0].copy(),np.copy(df[1])]
@@ -95,7 +93,6 @@ def mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path,model
     target = ['deceased']
     x0 = []
     y = []
-    
     for data in [X_real_tr[0],X_real_te[0],X_syn_tr[0],X_syn_te[0]]:
         y.append(data[target])
         x0.append(data.drop(target,axis=1))
@@ -131,6 +128,7 @@ def mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path,model
              x1 = np.sum(x1,axis=1)
              x.append(np.concatenate((x0,x1),axis=1))
         X_real_tr,X_real_te,X_syn_tr,X_syn_te = x
+        #build model and predict
         real_model = models.mortality_LR(penalty='elasticnet',l1_ratio=.5)
         real_model.fit(X_real_tr,y_real_tr.flatten())
         real_preds = real_model.predict(X_real_te)
@@ -145,6 +143,7 @@ def mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path,model
              x1 = np.sum(x1,axis=1)
              x.append(np.concatenate((x0,x1),axis=1))
         X_real_tr,X_real_te,X_syn_tr,X_syn_te = x
+        #build model and predict
         real_model = models.mortality_RF(n_estimators=100,max_depth=None)
         real_model.fit(X_real_tr,y_real_tr.flatten())
         real_preds = real_model.predict(X_real_te)

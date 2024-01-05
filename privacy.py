@@ -42,7 +42,7 @@ def privacy_AIA(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path):
         model = models.privacy_RNN(labels,nodes_at_input=100)
         #specify the loss functions and metrics we require
         #note that the output layer names are output_1 , output_2, output_3 and are dynamic not fixed
-        #changing this is TBD
+        #changing this is TBD (however does not seem possible due to dynamic structure of the model)
         losses = {}
         metric = {}
         var_count = 1
@@ -60,7 +60,6 @@ def privacy_AIA(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path):
             key = 'output_'+str(var_count)
             losses[key] = 'categorical_crossentropy'
             metric[key] = 'accuracy'
-
 
         model.compile(optimizer='Adam',loss=losses,metrics=metric)
 
