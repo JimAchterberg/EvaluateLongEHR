@@ -6,8 +6,16 @@ import pandas as pd
 import pickle
 import numpy as np
 from utils import metrics,models
+import keras
 
-def privacy_AIA(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path):
+def privacy_AIA(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version):
+    result_path = 'results/' + f'/{syn_model}/{version}'
+    if not os.path.exists(result_path):
+        os.makedirs(result_path)
+    model_path = 'model/' + f'/{syn_model}/{version}'
+    if not os.path.exists(model_path):
+        os.makedirs(model_path)
+
     #ensure we are working on a copy of the input 
     def return_copy(df):
          return [df[0].copy(),np.copy(df[1])]
@@ -21,7 +29,7 @@ def privacy_AIA(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path):
     with open(os.path.join(result_path,filename),'w') as f:
         pass
     #perform AIA for every label combination
-    for labels in [['age'],['gender'],['race'],['age','gender'],['age','race'],['gender','race'],['age','gender','race']]:
+    for j,labels in enumerate([['age'],['gender'],['race'],['age','gender'],['age','race'],['gender','race'],['age','gender','race']]):
         #ensure we are taking the one hot encoded columns
         if 'race' in labels:
             labels.remove('race')
@@ -78,10 +86,16 @@ def privacy_AIA(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path):
 
         #we train the model on synthetic data and assess on real test set
         #also possible: compare with real trained model to assess what the cause of bad/good prediction is
-        model.fit(x_syn_tr,y_syn_tr,epochs=1,batch_size=32,validation_split=.2,)
+        checkpoint_filepath = model_path+f'/privacy_AIA_label{j}.keras'
+        model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
+            filepath=checkpoint_filepath,
+            save_weights_only=True,
+            monitor='val_loss',
+            mode='min',
+            save_best_only=True)
+        model.fit(x_syn_tr,y_syn_tr,epochs=10,batch_size=32,validation_split=.2,callbacks=[model_checkpoint_callback])
+        model.load_weights(checkpoint_filepath)
         preds = model.predict(x_real_te)
-
-        #TBD: save model logging (i.e. plot of validation loss) and model checkpoints
 
         #evaluate predictions: compute mape for age, accuracy for gender and confusion matrix metrics for race
         
@@ -106,21 +120,21 @@ def privacy_AIA(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path):
 
 if __name__=='__main__':  
 #load real and synthetic data
-    path = 'C:/Users/Jim/Documents/thesis_paper/data/mimic_iv_preprocessed'
+    path = 'C:/Users/Jim/Documents/thesis_paper/data'
     version = 'v0.0'
-    load_path = os.path.join(path,'preprocessed',version)
-    result_path = os.path.join('results',version)
-    if not os.path.exists(result_path):
-        os.makedirs(result_path)
+    syn_model = 'cpar'
+    
+    load_path = path + '/processed' + '/preprocessed_eval' + f'/{syn_model}' + f'/{version}' 
     files = ['X_real_tr','X_real_te','X_syn_tr','X_syn_te']
     data = []
     for file in files:
         file = file+'.pkl'
         with open(os.path.join(load_path,file),'rb') as f:
             data.append(pickle.load(f))
-    X_real_tr,X_real_te,X_syn_tr,X_syn_te = data[0],data[1],data[2],data[3]
+    X_real_tr,X_real_te,X_syn_tr,X_syn_te = data
 
-    privacy_AIA(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path)
+
+    privacy_AIA(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version)
     
             
             

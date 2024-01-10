@@ -29,7 +29,7 @@ def exec_descr_stats(real_df,syn_df,result_path):
     real_freqmatrix = metrics.rel_freq_matrix(data=real_df,columns='icd_code')
     syn_freqmatrix = metrics.rel_freq_matrix(data=syn_df,columns='icd_code')
     diff_freqmatrix = real_freqmatrix-syn_freqmatrix
-    diff_matrixplot = metrics.freq_matrix_plot(diff_freqmatrix,range=(-.01,.01))
+    diff_matrixplot = metrics.freq_matrix_plot(diff_freqmatrix,range=None)
     diff_matrixplot.title('Synthetic/real ICD section frequency difference')
     filename = 'freq_diff_matrixplot.png'
     diff_matrixplot.savefig(os.path.join(result_path,filename))
@@ -39,7 +39,7 @@ def exec_descr_stats(real_df,syn_df,result_path):
 def exec_tsne(real_df,syn_df,result_path):
     df = pd.concat([real_df,syn_df],axis=0)
     static = preprocess.get_static(df,['age','gender','deceased','race']).astype(float)
-    seq = preprocess.df_to_3d(df,'icd_code',padding=-1).astype(str)
+    seq = preprocess.df_to_3d(df,cols=['icd_code'],padding=-1).astype(str)
 
     #find distance matrices
     static_distances = models.static_gower_matrix(static,cat_features=[False,True,True,True])
@@ -66,25 +66,25 @@ def exec_tsne(real_df,syn_df,result_path):
 
 if __name__ == '__main__':
     #load real and synthetic data
-    path = 'C:/Users/Jim/Documents/thesis_paper/data/mimic_iv_preprocessed'
+    path = 'C:/Users/Jim/Documents/thesis_paper/data'
     version = 'v0.0'
-    load_path = os.path.join(path,'generated',version)
+    syn_model = 'dgan'
+
+    load_path = path + '/processed' + '/generated' 
     file = 'real_data_221223.csv'
     cols = ['subject_id','seq_num','icd_code','gender','age','deceased','race']
-    real_df = pd.read_csv(os.path.join(load_path,file),usecols=cols)
-    result_path = os.path.join('results',version)
+    real_df = pd.read_csv(load_path+'/real/real.csv.gz',sep=',',compression='gzip',usecols=cols)
+    syn_df = pd.read_csv(load_path+f'/{syn_model}/{syn_model}_{version}.csv.gz',sep=',',compression='gzip',usecols=cols)
+
+    result_path = os.path.join('results',syn_model,version)
     if not os.path.exists(result_path):
         os.makedirs(result_path)
-    #REMOVE LATER!!!!!!!!!! ONLY NECESSARY FOR TESTING
-    np.random.seed(123)
-    sample_size = 100
-    split = np.random.choice(real_df.subject_id.unique(),int(real_df.subject_id.nunique()/2))
-    d = real_df.subject_id.unique()
-    split1 = np.random.choice(d,sample_size)
-    d = [x for x in d if x not in split1]
-    split2 = np.random.choice(d,sample_size)
-    syn_df = real_df[real_df.subject_id.isin(split1)]
-    real_df = real_df[real_df.subject_id.isin(split2)]
 
-    exec_tsne(real_df,syn_df,result_path)
+    #select only first 50 real and synthetic subjects for quick testing
+    real_sbj = real_df.subject_id.unique()[:50]
+    syn_sbj = syn_df.subject_id.unique()[:50]
+    real_df = real_df[real_df.subject_id.isin(real_sbj)]
+    syn_df = syn_df[syn_df.subject_id.isin(syn_sbj)]
+    
+    #exec_tsne(real_df,syn_df,result_path)
     exec_descr_stats(real_df,syn_df,result_path)

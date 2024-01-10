@@ -39,8 +39,11 @@ def rel_freq_matrix(data,columns,timestep_idx='seq_num'):
     rel_freq = rel_freq.pivot(index=columns,columns=timestep_idx,values='rel_freq')
     return rel_freq
 
-def freq_matrix_plot(rel_freq,range=(0,0.2)):
-    vmin,vmax = range
+def freq_matrix_plot(rel_freq,range=None):
+    if range != None:
+        vmin,vmax = range
+    else:
+        vmin = vmax = None
     plt.figure(figsize=(10, 6))
     sns.heatmap(rel_freq, annot=False, cmap='rocket_r', fmt=".2f", vmin=vmin, vmax=vmax)
     plt.xlabel('Timestep')

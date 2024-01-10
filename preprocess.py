@@ -1,10 +1,3 @@
-#general preprocessing necessary for most models:
-#1: one hot encode race and icd codes
-#2: separate static dataframe and 3d numpy array (padded to maximum timesteps)
-#3: create train test split
-#4: scale numerical variables (age)
-#save this data to disk for easy use 
-#models only need to create labels from train/test data and build/assess models
 
 import pandas as pd
 import os
@@ -12,8 +5,8 @@ import numpy as np
 from utils import preprocess
 import pickle
 
-#preprocess data for evaluation
-def preprocess_eval(real_df,syn_df,save_path=None):
+# #preprocess data for evaluation
+def preprocess_eval(real_df,syn_df):
     #ONE HOT ENCODE
     df = pd.concat([real_df,syn_df],axis=0)
     for col in ['race','icd_code']:
@@ -49,55 +42,38 @@ def preprocess_eval(real_df,syn_df,save_path=None):
     X_real_tr,X_real_te,X_syn_tr,X_syn_te = X[0],X[1],X[2],X[3]
    
     #------------------------------------------------------------------------------ 
-    #SAVE DATA TO DISK
-    if save_path != None:
-        for data,name in zip([X_real_tr,X_real_te,X_syn_tr,X_syn_te],['X_real_tr','X_real_te','X_syn_tr','X_syn_te']):
-            file_name = os.path.join(save_path,name+'.pkl')
-            with open(file_name, 'wb') as file:
-                pickle.dump(data, file)
+    
     return X_real_tr,X_real_te,X_syn_tr,X_syn_te
 
 if __name__=='__main__':
     #------------------------------------------------------------------------------
     #LOAD DATA
     #load real and synthetic data
-    path = 'C:/Users/Jim/Documents/thesis_paper/data/mimic_iv_preprocessed'
+    path = 'C:/Users/Jim/Documents/thesis_paper/data'
     version = 'v0.0'
-    load_path = os.path.join(path,'generated',version)
-    real_file = 'real_data_221223.csv'
-    #syn_file = 'real_data_221223.csv'
+    model = 'cpar'
+    load_path = path + '/processed' + '/generated'
 
     cols = ['subject_id','seq_num','icd_code','gender','age','deceased','race']
-    real_df = pd.read_csv(os.path.join(load_path,real_file),usecols=cols)
+    real_df = pd.read_csv(load_path+'/real'+'/real.csv.gz',sep=',',compression='gzip',usecols=cols)
+    syn_df = pd.read_csv(load_path+f'/{model}'+f'/{model}_{version}.csv.gz',sep=',',compression='gzip',usecols=cols)
 
     
-
-    save_path = os.path.join(path,'preprocessed',version)
+    #------------------------------------------------------------------------------
+    #preprocess real and synthetic data to train and test sets
+    X_real_tr,X_real_te,X_syn_tr,X_syn_te = preprocess_eval(real_df,syn_df)
+    #directory for saving preprocessed data
+    save_path = path + '/processed' + '/preprocessed_eval' + f'/{model}' + f'/{version}'
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
-    #save path for preprocessed data for evaluation:
-    #general path
-    #preprocessed
-    #model - real,dgan,cpar
-    #version 
-    #actual data
-
+    #save data as pickle objects
+    data_list = [X_real_tr,X_real_te,X_syn_tr,X_syn_te]
+    files = ['X_real_tr','X_real_te','X_syn_tr','X_syn_te']
     
-
-    #------------------------------------------------------------------------------
-    #TEMP FOR TESTING
-    np.random.seed(123)
-    sample_size = 100
-    split = np.random.choice(real_df.subject_id.unique(),int(real_df.subject_id.nunique()/2))
-    d = real_df.subject_id.unique()
-    split1 = np.random.choice(d,sample_size)
-    d = [x for x in d if x not in split1]
-    split2 = np.random.choice(d,sample_size)
-    syn_df = real_df[real_df.subject_id.isin(split1)]
-    real_df = real_df[real_df.subject_id.isin(split2)]
-
-    #------------------------------------------------------------------------------
-    #PREPROCESS AND SAVE DATA
-    preprocess_eval(real_df,syn_df,save_path)
+    for data,name in zip(data_list,files):
+        file_name = os.path.join(save_path,name+'.pkl')
+        with open(file_name, 'wb') as file:
+            pickle.dump(data, file)
+    
 

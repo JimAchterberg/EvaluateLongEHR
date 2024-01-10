@@ -3,8 +3,15 @@ import pandas as pd
 import pickle
 import numpy as np
 from utils import preprocess,metrics,models
+import keras
 
-def GoF(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path):
+def GoF(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version):
+        result_path = os.path.join('results',syn_model,version)
+        if not os.path.exists(result_path):
+            os.makedirs(result_path)
+        model_path = os.path.join('model',syn_model,version)
+        if not os.path.exists(model_path):
+            os.makedirs(model_path)
         #data selection
         X_train = [pd.concat([X_real_tr[0],X_syn_tr[0]],axis=0),\
                 np.concatenate((X_real_tr[1],X_syn_tr[1]),axis=0)]
@@ -17,10 +24,20 @@ def GoF(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path):
         data_list = [arr.astype(float) for arr in data_list]
         X_train[0],X_train[1],X_test[0],X_test[1],y_train,y_test = data_list
 
-        #fit a keras model and perform GoF test
+        #set GoF Keras model up for checkpoint saving best model
+        checkpoint_filepath = model_path + '/GoF' + '.keras'
+        model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
+        filepath=checkpoint_filepath,
+        save_weights_only=True,
+        monitor='val_accuracy',
+        mode='max',
+        save_best_only=True)
+        #instantiate and fit model
         model = models.GoF_RNN()
         model.compile(optimizer='Adam',loss='binary_crossentropy',metrics='accuracy')
-        model.fit(X_train,y_train,batch_size=32,epochs=1,validation_split=.2)
+        model.fit(X_train,y_train,batch_size=32,epochs=10,validation_split=.2,callbacks=[model_checkpoint_callback])
+        #load best model and make predictions
+        model.load_weights(checkpoint_filepath)
         pred = model.predict(X_test)
         test_stat,pval = metrics.ks_test(real_pred=pred[y_test==0],syn_pred=pred[y_test==1])
 
@@ -41,11 +58,17 @@ def GoF(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path):
             f.write('total synthetic: ' + str(total_syn) + '\n')
             f.write('p-value: ' + str(pval) + '\n')
 
-def trajectory_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path):
+def trajectory_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version):
+        result_path = os.path.join('results',syn_model,version)
+        if not os.path.exists(result_path):
+            os.makedirs(result_path)
+        model_path = os.path.join('model',syn_model,version)
+        if not os.path.exists(model_path):
+            os.makedirs(model_path)
         x = []
         y = []
         for data in [X_real_tr,X_real_te,X_syn_tr,X_syn_te]:
-            x_,y_ = preprocess.trajectory_input_output(data)
+            x_,y_ = preprocess.trajectory_input_output(data,max_t=X_real_tr[1].shape[1])
             x.append(x_)
             y.append(y_)
         X_real_tr,X_real_te,X_syn_tr,X_syn_te = x
@@ -59,14 +82,25 @@ def trajectory_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path):
         X_real_tr[0],X_real_tr[1],X_real_te[0],X_real_te[1],\
                     X_syn_tr[0],X_syn_tr[1],X_syn_te[0],X_syn_te[1],\
                         y_real_tr,y_real_te,y_syn_tr,y_syn_te = data_list
-
-        #build model and predict
-        real_model = models.trajectory_RNN_simple(output_size=y_real_tr.shape[1])
-        syn_model = models.trajectory_RNN_simple(output_size=y_syn_tr.shape[1])
-        real_model.compile(optimizer='Adam',loss='categorical_crossentropy',metrics='accuracy')
-        syn_model.compile(optimizer='Adam',loss='categorical_crossentropy',metrics='accuracy')
-        real_model.fit(X_real_tr,y_real_tr,batch_size=32,epochs=1,validation_split=.2)
-        syn_model.fit(X_syn_tr,y_syn_tr,batch_size=32,epochs=1,validation_split=.2)
+        
+        #fit the synthetic and real model
+        model_list = []
+        for data,name in zip([[X_real_tr,y_real_tr],[X_syn_tr,y_syn_tr]],['real','syn']):
+            X_tr,y_tr = data
+            checkpoint_filepath=model_path + f'/trajectory_{name}'+'.keras'
+            model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
+            filepath=checkpoint_filepath,
+            save_weights_only=True,
+            monitor='val_accuracy',
+            mode='max',
+            save_best_only=True)
+            model = models.trajectory_RNN_simple(output_size=y_tr.shape[1])
+            model.compile(optimizer='Adam',loss='categorical_crossentropy',metrics='accuracy')
+            model.fit(X_tr,y_tr,batch_size=32,epochs=10,validation_split=.2,callbacks=[model_checkpoint_callback])
+            model.load_weights(checkpoint_filepath)
+            model_list.append(model)
+        real_model,syn_model = model_list
+        #make predictions
         real_preds = real_model.predict(X_real_te)
         syn_preds = syn_model.predict(X_real_te)
         #evaluate results
@@ -80,8 +114,15 @@ def trajectory_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path):
             f.write('Real accuracy: ' + str(real_acc) + '\n')
             f.write('Synthetic accuracy: ' + str(syn_acc) + '\n')
             
-def mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path,model='RNN'):
-    assert model  in ['RNN','LR','RF']
+def mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version,pred_model='RNN'):
+    result_path = os.path.join('results',syn_model,version)
+    if not os.path.exists(result_path):
+        os.makedirs(result_path)
+    model_path = os.path.join('model',syn_model,version)
+    if not os.path.exists(model_path):
+        os.makedirs(model_path)
+
+    assert pred_model  in ['RNN','LR','RF']
     #ensure we are working on copies as to not alter the original data
     def return_copy(df):
          return [df[0].copy(),np.copy(df[1])]
@@ -109,18 +150,29 @@ def mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path,model
                 X_syn_tr[0],X_syn_tr[1],X_syn_te[0],X_syn_te[1],\
                     y_real_tr,y_real_te,y_syn_tr,y_syn_te = data_list
     
-    if model=='RNN':
-        #build model and predict
-        real_model = models.mortality_RNN_simple()
-        real_model.compile(optimizer='Adam',loss='binary_crossentropy',metrics='accuracy')
-        real_model.fit(X_real_tr,y_real_tr,batch_size=32,epochs=1,validation_split=.2)
+    if pred_model=='RNN':
+        model_list = []
+        for data,name in zip([[X_real_tr,y_real_tr],[X_syn_tr,y_syn_tr]],['real','syn']):
+            X_tr,y_tr = data 
+            checkpoint_filepath=model_path + f'/mortality_{pred_model}_{name}'+'.keras'
+            model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
+            filepath=checkpoint_filepath,
+            save_weights_only=True,
+            monitor='val_accuracy',
+            mode='max',
+            save_best_only=True)
+            model = models.mortality_RNN_simple()
+            model.compile(optimizer='Adam',loss='binary_crossentropy',metrics='accuracy')
+            model.fit(X_tr,y_tr,batch_size=32,epochs=10,validation_split=.2,callbacks=[model_checkpoint_callback])
+            #choose the best version and load its weights for real and synthetic model
+            model.load_weights(checkpoint_filepath)
+            model_list.append(model)
+        real_model,syn_model = model_list
+        
         real_preds = real_model.predict(X_real_te)
-        syn_model = models.mortality_RNN_simple()
-        syn_model.compile(optimizer='Adam',loss='binary_crossentropy',metrics='accuracy')
-        syn_model.fit(X_syn_tr,y_syn_tr,batch_size=32,epochs=1,validation_split=.2)
         syn_preds = real_model.predict(X_real_te)
 
-    elif model=='LR':
+    elif pred_model=='LR':
         #turn sequence data into count features and then to single array
         x = []
         for data in [X_real_tr,X_real_te,X_syn_tr,X_syn_te]:
@@ -128,12 +180,18 @@ def mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path,model
              x1 = np.sum(x1,axis=1)
              x.append(np.concatenate((x0,x1),axis=1))
         X_real_tr,X_real_te,X_syn_tr,X_syn_te = x
-        #build model and predict
-        real_model = models.mortality_LR(penalty='elasticnet',l1_ratio=.5)
-        real_model.fit(X_real_tr,y_real_tr.flatten())
+        model_list = []
+        for data,name in zip([[X_real_tr,y_real_tr],[X_syn_tr,y_syn_tr]],['real','syn']):
+            X_tr,y_tr = data
+            checkpoint_filepath=model_path + f'/mortality_{pred_model}_{name}'+'.pkl'
+            model = models.mortality_LR(penalty='elasticnet',l1_ratio=.5)
+            model.fit(X_tr,y_tr.flatten())
+            with open(checkpoint_filepath,'wb') as f:
+                pickle.dump(model,f)
+            model_list.append(model)
+        real_model,syn_model = model_list
+            
         real_preds = real_model.predict(X_real_te)
-        syn_model = models.mortality_LR(penalty='elasticnet',l1_ratio=.5)
-        syn_model.fit(X_syn_tr,y_syn_tr.flatten())
         syn_preds = syn_model.predict(X_real_te)
     else:
         #turn sequence data into count features and then to single array
@@ -143,48 +201,50 @@ def mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path,model
              x1 = np.sum(x1,axis=1)
              x.append(np.concatenate((x0,x1),axis=1))
         X_real_tr,X_real_te,X_syn_tr,X_syn_te = x
+        model_list = []
+        for data,name in zip([[X_real_tr,y_real_tr],[X_syn_tr,y_syn_tr]],['real','syn']):
+            X_tr,y_tr = data
+            checkpoint_filepath=model_path + f'/mortality_{pred_model}_{name}'+'.pkl'
+            model = models.mortality_RF(n_estimators=100,max_depth=None)
+            model.fit(X_tr,y_tr.flatten())
+            with open(checkpoint_filepath,'wb') as f:
+                pickle.dump(model,f)
+            model_list.append(model)
+        real_model,syn_model = model_list
         #build model and predict
-        real_model = models.mortality_RF(n_estimators=100,max_depth=None)
-        real_model.fit(X_real_tr,y_real_tr.flatten())
         real_preds = real_model.predict(X_real_te)
-        syn_model = models.mortality_RF(n_estimators=100,max_depth=None)
-        syn_model.fit(X_syn_tr,y_syn_tr.flatten())
         syn_preds = syn_model.predict(X_real_te)
 
     #evaluate results
-    real_acc = metrics.accuracy(y_real_te,np.round(real_preds))
-    syn_acc = metrics.accuracy(y_real_te,np.round(syn_preds))
-    real_auc = metrics.auc(y_real_te,real_preds)
-    syn_auc = metrics.auc(y_real_te,syn_preds)
-    class_balance = sum(y_real_te)/len(y_real_te)
-    filename = model+'_'+'mortality_pred_accuracy.txt'
-    with open(os.path.join(result_path,filename),'w') as f:
-        f.write('Real accuracy: ' + str(real_acc) + '\n')
-        f.write('Synthetic accuracy: ' + str(syn_acc) + '\n')
-        f.write('Real AUC: ' + str(real_auc) + '\n')
-        f.write('Synthetic AUC: ' + str(syn_auc) + '\n')
-        f.write('Class balance: '+str(class_balance)+'\n')
+    filename = pred_model+'_'+'mortality_pred_accuracy.txt'
+    for preds,name in zip([real_preds,syn_preds],['Real','Synthetic']):
+        acc = metrics.accuracy(y_real_te,np.round(preds))
+        auc = metrics.auc(y_real_te,preds)
+        with open(os.path.join(result_path,filename),'w') as f:
+            f.write(f'{name} accuracy: '+str(acc)+'\n')
+            f.write(f'{name} AUC: '+str(auc)+'\n')
+            f.write('Class balance: ' + str(sum(y_real_te)/len(y_real_te)))
 
+    
 if __name__=='__main__':  
 #load real and synthetic data
-    path = 'C:/Users/Jim/Documents/thesis_paper/data/mimic_iv_preprocessed'
+    path = 'C:/Users/Jim/Documents/thesis_paper/data'
     version = 'v0.0'
-    load_path = os.path.join(path,'preprocessed',version)
-    result_path = os.path.join('results',version)
-    if not os.path.exists(result_path):
-        os.makedirs(result_path)
+    syn_model = 'dgan'
+    
+    load_path = path + '/processed' + '/preprocessed_eval' + f'/{syn_model}' + f'/{version}' 
     files = ['X_real_tr','X_real_te','X_syn_tr','X_syn_te']
     data = []
     for file in files:
         file = file+'.pkl'
         with open(os.path.join(load_path,file),'rb') as f:
             data.append(pickle.load(f))
-    X_real_tr,X_real_te,X_syn_tr,X_syn_te = data[0],data[1],data[2],data[3]
+    X_real_tr,X_real_te,X_syn_tr,X_syn_te = data
 
-    #trajectory_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path)
-    #GoF(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path)
-    #mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path,model='RNN')
-    #mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path,model='RF')
-    #mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,result_path,model='LR')
+    GoF(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version)
+    trajectory_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version)
+    mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version,pred_model='RNN')
+    mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version,pred_model='RF')
+    mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version,pred_model='LR')
 
     
