@@ -1,4 +1,4 @@
-from sklearn.metrics import mean_absolute_percentage_error,accuracy_score,roc_auc_score
+from sklearn.metrics import mean_absolute_percentage_error,mean_absolute_error,accuracy_score,roc_auc_score
 from matplotlib import pyplot as plt 
 import seaborn as sns
 import pandas as pd
@@ -6,6 +6,9 @@ from scipy.stats import ks_2samp
 
 def mape(true,pred):
     return mean_absolute_percentage_error(true,pred)
+
+def mae(true,pred):
+    return mean_absolute_error(true,pred)
 
 def accuracy(true,pred):
     return accuracy_score(true,pred)

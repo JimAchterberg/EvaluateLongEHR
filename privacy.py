@@ -104,8 +104,10 @@ def privacy_AIA(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version):
             f.write('Labels for this iteration: '+str(labels)+'\n')
             var_count = 0
             if 'age' in labels:
-                metric = metrics.mape(y_real_te[var_count],preds[var_count])
-                f.write('Age MAPE is: '+str(metric)+'\n')
+                #metric = metrics.mape(y_real_te[var_count],preds[var_count])
+                #f.write('Age MAPE is: '+str(metric)+'\n')
+                metric = metrics.mae(y_real_te[var_count],preds[var_count])
+                f.write('Age MAE is: '+str(metric)+'\n')
                 var_count+=1
             if 'gender' in labels:
                 metric = metrics.accuracy(y_real_te[var_count],np.round(preds[var_count]))
@@ -133,7 +135,8 @@ if __name__=='__main__':
             data.append(pickle.load(f))
     X_real_tr,X_real_te,X_syn_tr,X_syn_te = data
 
-
+    #TODO:
+    #scale age back to normal range before reporting MAPE/MAE
     privacy_AIA(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version)
     
             
