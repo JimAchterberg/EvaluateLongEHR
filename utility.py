@@ -6,6 +6,7 @@ from utils import preprocess,metrics,models
 import keras
 
 def GoF(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version):
+        
         result_path = os.path.join('results',syn_model,version)
         if not os.path.exists(result_path):
             os.makedirs(result_path)
@@ -19,6 +20,10 @@ def GoF(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version):
                 np.concatenate((X_real_te[1],X_syn_te[1]),axis=0)]
         y_train = np.concatenate((np.zeros(X_real_tr[0].shape[0]),np.ones(X_syn_tr[0].shape[0])),axis=0)
         y_test = np.concatenate((np.zeros(X_real_te[0].shape[0]),np.ones(X_syn_te[0].shape[0])),axis=0)
+        #zero one scale age
+        X_train[0]['age'] = preprocess.Scaler().transform(X_train[0]['age'])
+        X_test[0]['age'] = preprocess.Scaler().transform(X_test[0]['age'])
+        #turn everything into float numpy arrays
         data_list = [X_train[0],X_train[1],X_test[0],X_test[1],y_train,y_test]
         data_list = [np.array(obj) if isinstance(obj, pd.DataFrame) else obj for obj in data_list]
         data_list = [arr.astype(float) for arr in data_list]
@@ -71,21 +76,26 @@ def trajectory_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,versio
             x_,y_ = preprocess.trajectory_input_output(data,max_t=X_real_tr[1].shape[1])
             x.append(x_)
             y.append(y_)
-        X_real_tr,X_real_te,X_syn_tr,X_syn_te = x
+        x_real_tr,x_real_te,x_syn_tr,x_syn_te = x
         y_real_tr,y_real_te,y_syn_tr,y_syn_te = y
+        #zero one scale age
+        x_real_tr[0]['age'] = preprocess.Scaler().transform(x_real_tr[0]['age'])
+        x_real_te[0]['age'] = preprocess.Scaler().transform(x_real_te[0]['age'])
+        x_syn_tr[0]['age'] = preprocess.Scaler().transform(x_syn_tr[0]['age'])
+        x_syn_te[0]['age'] = preprocess.Scaler().transform(x_syn_te[0]['age'])
         #turn all data into float numpy arrays
-        data_list = [X_real_tr[0],X_real_tr[1],X_real_te[0],X_real_te[1],\
-                    X_syn_tr[0],X_syn_tr[1],X_syn_te[0],X_syn_te[1],\
+        data_list = [x_real_tr[0],x_real_tr[1],x_real_te[0],x_real_te[1],\
+                    x_syn_tr[0],x_syn_tr[1],x_syn_te[0],x_syn_te[1],\
                         y_real_tr,y_real_te,y_syn_tr,y_syn_te]
         data_list = [np.array(obj) if isinstance(obj, pd.DataFrame) else obj for obj in data_list]
         data_list = [arr.astype(float) for arr in data_list]
-        X_real_tr[0],X_real_tr[1],X_real_te[0],X_real_te[1],\
-                    X_syn_tr[0],X_syn_tr[1],X_syn_te[0],X_syn_te[1],\
+        x_real_tr[0],x_real_tr[1],x_real_te[0],x_real_te[1],\
+                    x_syn_tr[0],x_syn_tr[1],x_syn_te[0],x_syn_te[1],\
                         y_real_tr,y_real_te,y_syn_tr,y_syn_te = data_list
         
         #fit the synthetic and real model
         model_list = []
-        for data,name in zip([[X_real_tr,y_real_tr],[X_syn_tr,y_syn_tr]],['real','syn']):
+        for data,name in zip([[x_real_tr,y_real_tr],[x_syn_tr,y_syn_tr]],['real','syn']):
             X_tr,y_tr = data
             checkpoint_filepath=model_path + f'/trajectory_{name}'+'.keras'
             model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
@@ -101,8 +111,8 @@ def trajectory_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,versio
             model_list.append(model)
         real_model,syn_model = model_list
         #make predictions
-        real_preds = real_model.predict(X_real_te)
-        syn_preds = syn_model.predict(X_real_te)
+        real_preds = real_model.predict(x_real_te)
+        syn_preds = syn_model.predict(x_real_te)
         #evaluate results
         labels = np.argmax(y_real_te,axis=1)
         real_preds_labels = np.argmax(real_preds,axis=1)
@@ -126,33 +136,37 @@ def mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version
     #ensure we are working on copies as to not alter the original data
     def return_copy(df):
          return [df[0].copy(),np.copy(df[1])]
-    X_real_tr = return_copy(X_real_tr)
-    X_real_te = return_copy(X_real_te)
-    X_syn_tr = return_copy(X_syn_tr)
-    X_syn_te = return_copy(X_syn_te)
+    x_real_tr = return_copy(X_real_tr)
+    x_real_te = return_copy(X_real_te)
+    x_syn_tr = return_copy(X_syn_tr)
+    x_syn_te = return_copy(X_syn_te)
     #get input/output data
     target = ['deceased']
     x0 = []
     y = []
-    for data in [X_real_tr[0],X_real_te[0],X_syn_tr[0],X_syn_te[0]]:
+    for data in [x_real_tr[0],x_real_te[0],x_syn_tr[0],x_syn_te[0]]:
         y.append(data[target])
         x0.append(data.drop(target,axis=1))
-    X_real_tr[0],X_real_te[0],X_syn_tr[0],X_syn_te[0] = x0
+    x_real_tr[0],x_real_te[0],x_syn_tr[0],x_syn_te[0] = x0
     y_real_tr,y_real_te,y_syn_tr,y_syn_te = y
-
+    #zero one scale age 
+    x_real_tr[0]['age'] = preprocess.Scaler().transform(x_real_tr[0]['age'])
+    x_real_te[0]['age'] = preprocess.Scaler().transform(x_real_te[0]['age'])
+    x_syn_tr[0]['age'] = preprocess.Scaler().transform(x_syn_tr[0]['age'])
+    x_syn_te[0]['age'] = preprocess.Scaler().transform(x_syn_te[0]['age'])
     #turn all data into float numpy arrays
-    data_list = [X_real_tr[0],X_real_tr[1],X_real_te[0],X_real_te[1],\
-                X_syn_tr[0],X_syn_tr[1],X_syn_te[0],X_syn_te[1],\
+    data_list = [x_real_tr[0],x_real_tr[1],x_real_te[0],x_real_te[1],\
+                x_syn_tr[0],x_syn_tr[1],x_syn_te[0],x_syn_te[1],\
                     y_real_tr,y_real_te,y_syn_tr,y_syn_te]
     data_list = [np.array(obj) if isinstance(obj, pd.DataFrame) else obj for obj in data_list]
     data_list = [arr.astype(float) for arr in data_list]
-    X_real_tr[0],X_real_tr[1],X_real_te[0],X_real_te[1],\
-                X_syn_tr[0],X_syn_tr[1],X_syn_te[0],X_syn_te[1],\
+    x_real_tr[0],x_real_tr[1],x_real_te[0],x_real_te[1],\
+                x_syn_tr[0],x_syn_tr[1],x_syn_te[0],x_syn_te[1],\
                     y_real_tr,y_real_te,y_syn_tr,y_syn_te = data_list
     
     if pred_model=='RNN':
         model_list = []
-        for data,name in zip([[X_real_tr,y_real_tr],[X_syn_tr,y_syn_tr]],['real','syn']):
+        for data,name in zip([[x_real_tr,y_real_tr],[x_syn_tr,y_syn_tr]],['real','syn']):
             X_tr,y_tr = data 
             checkpoint_filepath=model_path + f'/mortality_{pred_model}_{name}'+'.keras'
             model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
@@ -169,19 +183,19 @@ def mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version
             model_list.append(model)
         real_model,syn_model = model_list
         
-        real_preds = real_model.predict(X_real_te)
-        syn_preds = real_model.predict(X_real_te)
+        real_preds = real_model.predict(x_real_te)
+        syn_preds = real_model.predict(x_real_te)
 
     elif pred_model=='LR':
         #turn sequence data into count features and then to single array
         x = []
-        for data in [X_real_tr,X_real_te,X_syn_tr,X_syn_te]:
+        for data in [x_real_tr,x_real_te,x_syn_tr,x_syn_te]:
              x0,x1 = data 
              x1 = np.sum(x1,axis=1)
              x.append(np.concatenate((x0,x1),axis=1))
-        X_real_tr,X_real_te,X_syn_tr,X_syn_te = x
+        x_real_tr,x_real_te,x_syn_tr,x_syn_te = x
         model_list = []
-        for data,name in zip([[X_real_tr,y_real_tr],[X_syn_tr,y_syn_tr]],['real','syn']):
+        for data,name in zip([[x_real_tr,y_real_tr],[x_syn_tr,y_syn_tr]],['real','syn']):
             X_tr,y_tr = data
             checkpoint_filepath=model_path + f'/mortality_{pred_model}_{name}'+'.pkl'
             model = models.mortality_LR(penalty='elasticnet',l1_ratio=.5)
@@ -191,18 +205,18 @@ def mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version
             model_list.append(model)
         real_model,syn_model = model_list
             
-        real_preds = real_model.predict(X_real_te)
-        syn_preds = syn_model.predict(X_real_te)
+        real_preds = real_model.predict(x_real_te)
+        syn_preds = syn_model.predict(x_real_te)
     else:
         #turn sequence data into count features and then to single array
         x = []
-        for data in [X_real_tr,X_real_te,X_syn_tr,X_syn_te]:
+        for data in [x_real_tr,x_real_te,x_syn_tr,x_syn_te]:
              x0,x1 = data 
              x1 = np.sum(x1,axis=1)
              x.append(np.concatenate((x0,x1),axis=1))
-        X_real_tr,X_real_te,X_syn_tr,X_syn_te = x
+        x_real_tr,x_real_te,x_syn_tr,x_syn_te = x
         model_list = []
-        for data,name in zip([[X_real_tr,y_real_tr],[X_syn_tr,y_syn_tr]],['real','syn']):
+        for data,name in zip([[x_real_tr,y_real_tr],[x_syn_tr,y_syn_tr]],['real','syn']):
             X_tr,y_tr = data
             checkpoint_filepath=model_path + f'/mortality_{pred_model}_{name}'+'.pkl'
             model = models.mortality_RF(n_estimators=100,max_depth=None)
@@ -212,8 +226,8 @@ def mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version
             model_list.append(model)
         real_model,syn_model = model_list
         #build model and predict
-        real_preds = real_model.predict(X_real_te)
-        syn_preds = syn_model.predict(X_real_te)
+        real_preds = real_model.predict(x_real_te)
+        syn_preds = syn_model.predict(x_real_te)
 
     #evaluate results
     filename = pred_model+'_'+'mortality_pred_accuracy.txt'

@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from keras.preprocessing.sequence import pad_sequences
+
+
 #get static attribute table in which values are not repeated
 def get_static(data,columns,subject_idx='subject_id'):
     return data.groupby(subject_idx)[columns].first()
@@ -41,9 +43,30 @@ def one_hot_encoding(data,columns,column_sizes=None):
         data = pd.concat([data,dummies],axis=1)
     return data
 
+class Scaler():
+    def __init__(self,method='zero-one'):
+        super().__init__()
+        self.method = method
+
+    def transform(self,x):
+        if self.method=='zero-one':
+            self.min = x.min()
+            self.max = x.max()
+            return (x-self.min)/(self.max-self.min)
+        
+    def reverse_transform(self,x):
+        if self.method=='zero-one':
+            return x*(self.max-self.min) + self.min
+        
+
+    
+
+
 #normalizing function for pandas dataframe
 def normalize(x):
     return (x-x.mean())/(x.std())
+
+
 
 #zero one scaling function for pandas dataframe
 def zero_one_scale(x):

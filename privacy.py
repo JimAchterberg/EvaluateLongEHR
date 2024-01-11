@@ -5,7 +5,7 @@ import os
 import pandas as pd
 import pickle
 import numpy as np
-from utils import metrics,models
+from utils import metrics,models,preprocess
 import keras
 
 def privacy_AIA(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version):
@@ -23,6 +23,14 @@ def privacy_AIA(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version):
     X_real_te = return_copy(X_real_te)
     X_syn_tr = return_copy(X_syn_tr)
     X_syn_te = return_copy(X_syn_te)
+
+    #zero one scale age 
+    X_real_tr[0]['age'] = preprocess.Scaler().transform(X_real_tr[0]['age'])
+    X_syn_tr[0]['age'] = preprocess.Scaler().transform(X_syn_tr[0]['age'])
+    X_syn_te[0]['age'] = preprocess.Scaler().transform(X_syn_te[0]['age'])
+    age_scaler = preprocess.Scaler()
+    X_real_te[0]['age'] = age_scaler.transform(X_real_te[0]['age'])
+
 
     #clear output file 
     filename = 'privacy_AIA.txt'
@@ -104,8 +112,12 @@ def privacy_AIA(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version):
             f.write('Labels for this iteration: '+str(labels)+'\n')
             var_count = 0
             if 'age' in labels:
-                #metric = metrics.mape(y_real_te[var_count],preds[var_count])
-                #f.write('Age MAPE is: '+str(metric)+'\n')
+                #rescale age to original range
+                y_real_te[var_count] = age_scaler.reverse_transform(y_real_te[var_count])
+                preds[var_count] = age_scaler.reverse_transform(preds[var_count])
+                #compute metrics
+                metric = metrics.mape(y_real_te[var_count],preds[var_count])
+                f.write('Age MAPE is: '+str(metric)+'\n')
                 metric = metrics.mae(y_real_te[var_count],preds[var_count])
                 f.write('Age MAE is: '+str(metric)+'\n')
                 var_count+=1
@@ -135,8 +147,7 @@ if __name__=='__main__':
             data.append(pickle.load(f))
     X_real_tr,X_real_te,X_syn_tr,X_syn_te = data
 
-    #TODO:
-    #scale age back to normal range before reporting MAPE/MAE
+
     privacy_AIA(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version)
     
             
