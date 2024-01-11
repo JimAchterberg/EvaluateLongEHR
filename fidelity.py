@@ -68,10 +68,9 @@ if __name__ == '__main__':
     #load real and synthetic data
     path = 'C:/Users/Jim/Documents/thesis_paper/data'
     version = 'v0.0'
-    syn_model = 'dgan'
+    syn_model = 'cpar'
 
     load_path = path + '/processed' + '/generated' 
-    file = 'real_data_221223.csv'
     cols = ['subject_id','seq_num','icd_code','gender','age','deceased','race']
     real_df = pd.read_csv(load_path+'/real/real.csv.gz',sep=',',compression='gzip',usecols=cols)
     syn_df = pd.read_csv(load_path+f'/{syn_model}/{syn_model}_{version}.csv.gz',sep=',',compression='gzip',usecols=cols)
@@ -80,11 +79,5 @@ if __name__ == '__main__':
     if not os.path.exists(result_path):
         os.makedirs(result_path)
 
-    #select only first 50 real and synthetic subjects for quick testing
-    real_sbj = real_df.subject_id.unique()[:50]
-    syn_sbj = syn_df.subject_id.unique()[:50]
-    real_df = real_df[real_df.subject_id.isin(real_sbj)]
-    syn_df = syn_df[syn_df.subject_id.isin(syn_sbj)]
-    
     #exec_tsne(real_df,syn_df,result_path)
     exec_descr_stats(real_df,syn_df,result_path)

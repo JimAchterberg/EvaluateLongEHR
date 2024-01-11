@@ -231,13 +231,16 @@ def mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version
 
     #evaluate results
     filename = pred_model+'_'+'mortality_pred_accuracy.txt'
+    #create and clear result file
+    with open(os.path.join(result_path,filename),'w') as f:
+        pass
     for preds,name in zip([real_preds,syn_preds],['Real','Synthetic']):
         acc = metrics.accuracy(y_real_te,np.round(preds))
         auc = metrics.auc(y_real_te,preds)
-        with open(os.path.join(result_path,filename),'w') as f:
+        with open(os.path.join(result_path,filename),'a') as f:
             f.write(f'{name} accuracy: '+str(acc)+'\n')
             f.write(f'{name} AUC: '+str(auc)+'\n')
-            f.write('Class balance: ' + str(sum(y_real_te)/len(y_real_te)))
+            f.write('Class balance: ' + str(sum(y_real_te)/len(y_real_te))+'\n')
 
     
 if __name__=='__main__':  
@@ -258,7 +261,7 @@ if __name__=='__main__':
     GoF(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version)
     trajectory_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version)
     mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version,pred_model='RNN')
-    mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version,pred_model='RF')
-    mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version,pred_model='LR')
+    #mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version,pred_model='RF')
+    #mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version,pred_model='LR')
 
     

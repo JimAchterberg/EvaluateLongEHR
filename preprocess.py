@@ -44,7 +44,7 @@ if __name__=='__main__':
     #load real and synthetic data
     path = 'C:/Users/Jim/Documents/thesis_paper/data'
     version = 'v0.0'
-    model = 'dgan'
+    model = 'cpar'
     load_path = path + '/processed' + '/generated'
 
     cols = ['subject_id','seq_num','icd_code','gender','age','deceased','race']

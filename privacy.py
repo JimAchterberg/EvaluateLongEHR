@@ -136,7 +136,7 @@ if __name__=='__main__':
 #load real and synthetic data
     path = 'C:/Users/Jim/Documents/thesis_paper/data'
     version = 'v0.0'
-    syn_model = 'cpar'
+    syn_model = 'dgan'
     
     load_path = path + '/processed' + '/preprocessed_eval' + f'/{syn_model}' + f'/{version}' 
     files = ['X_real_tr','X_real_te','X_syn_tr','X_syn_te']
