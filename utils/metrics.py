@@ -1,6 +1,7 @@
 from sklearn.metrics import mean_absolute_percentage_error,mean_absolute_error,accuracy_score,roc_auc_score
 from matplotlib import pyplot as plt 
 import seaborn as sns
+import numpy as np 
 import pandas as pd
 from scipy.stats import ks_2samp
 
@@ -54,3 +55,11 @@ def freq_matrix_plot(rel_freq,range=None):
     #plt.xticks(ticks=np.arange(1,data[timestep_idx].max()+1,1),labels=data[timestep_idx].unique())
     #plt.yticks(ticks=np.arange(0,data[columns].max(),1),labels=np.sort(data[columns].unique()))
     return plt
+
+def GoF_kdeplot(pred,y_test):
+    #df = pd.DataFrame(np.concatenate((pred,np.expand_dims(y_test,-1)),axis=1),columns=['pred','hue'])
+    #df = pd.DataFrame(np.concatenate((pred[y_test==0],pred[y_test==1]),axis=1),columns=['Real','Synthetic'])
+    plt.hist(pred[y_test==0],bins='auto',label='Real',color='b',alpha=.5)
+    plt.hist(pred[y_test==1],bins='auto',label='Synthetic',color='r',alpha=.5)
+    plt.legend()
+    return plt 

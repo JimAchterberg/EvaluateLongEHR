@@ -5,6 +5,7 @@ import numpy as np
 from utils import preprocess,metrics,models
 import keras
 
+
 def GoF(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version):
         
         result_path = os.path.join('results',syn_model,version)
@@ -62,6 +63,12 @@ def GoF(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version):
             f.write('total real: ' + str(total_real) + '\n')
             f.write('total synthetic: ' + str(total_syn) + '\n')
             f.write('p-value: ' + str(pval) + '\n')
+
+        #save plot of distribution of real/synthetic predictions
+        GoF_kdeplot = metrics.GoF_kdeplot(pred=pred,y_test=y_test)
+        GoF_kdeplot.title('Kernel density plots for classification predictions of real and synthetic samples')
+        filename = 'GoF_kdeplot.png'
+        GoF_kdeplot.savefig(os.path.join(result_path,filename))
 
 def trajectory_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version):
         result_path = os.path.join('results',syn_model,version)
@@ -247,7 +254,7 @@ if __name__=='__main__':
 #load real and synthetic data
     path = 'C:/Users/Jim/Documents/thesis_paper/data'
     version = 'v0.0'
-    syn_model = 'dgan'
+    syn_model = 'cpar'
     
     load_path = path + '/processed' + '/preprocessed_eval' + f'/{syn_model}' + f'/{version}' 
     files = ['X_real_tr','X_real_te','X_syn_tr','X_syn_te']
@@ -259,8 +266,8 @@ if __name__=='__main__':
     X_real_tr,X_real_te,X_syn_tr,X_syn_te = data
 
     GoF(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version)
-    trajectory_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version)
-    mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version,pred_model='RNN')
+    #trajectory_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version)
+    #mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version,pred_model='RNN')
     #mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version,pred_model='RF')
     #mortality_prediction(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version,pred_model='LR')
 
