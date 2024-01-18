@@ -66,7 +66,7 @@ def GoF(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version):
 
         #save plot of distribution of real/synthetic predictions
         GoF_kdeplot = metrics.GoF_kdeplot(pred=pred,y_test=y_test)
-        GoF_kdeplot.title('Kernel density plots for classification predictions of real and synthetic samples')
+        GoF_kdeplot.title('Distribution of classification scores')
         filename = 'GoF_kdeplot.png'
         GoF_kdeplot.savefig(os.path.join(result_path,filename))
 
