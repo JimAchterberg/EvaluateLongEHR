@@ -124,9 +124,10 @@ def mts_gower_matrix(data,cat_features=None):
     return timevarying_distance
 
 class privacy_RNN(keras.Model):
-    def __init__(self,labels,nodes_at_input=100):
+    def __init__(self,labels):
         super().__init__()
         self.labels=labels
+        nodes_at_input = 100
         self.recurrent_input = layers.LSTM(nodes_at_input,activation='relu')
         self.dense_input = layers.Dense(nodes_at_input,activation='relu')
         self.concat = layers.Concatenate(axis=1)

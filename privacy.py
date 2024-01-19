@@ -8,7 +8,8 @@ import numpy as np
 from utils import metrics,models,preprocess
 import keras
 
-def privacy_AIA(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version):
+def privacy_AIA(data,syn_model,version,hparams):
+    X_real_tr,X_real_te,X_syn_tr,X_syn_te = data
     result_path = 'results/' + f'/{syn_model}/{version}'
     if not os.path.exists(result_path):
         os.makedirs(result_path)
@@ -55,7 +56,7 @@ def privacy_AIA(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version):
         y_real_tr,y_real_te,y_syn_tr,y_syn_te = y 
 
         #build the model, which takes account of input labels and builds output layer accordingly
-        model = models.privacy_RNN(labels,nodes_at_input=100)
+        model = models.privacy_RNN(labels)
         #specify the loss functions and metrics we require
         #note that the output layer names are output_1 , output_2, output_3 and are dynamic not fixed
         #changing this is TBD (however does not seem possible due to dynamic structure of the model)
@@ -82,12 +83,12 @@ def privacy_AIA(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version):
         #keras model expects a list of the different outputs instead of a concatenated array
         #also take care of turning them into float numpy arrays
         y_list = []
-        for data in [y_real_tr,y_real_te,y_syn_tr,y_syn_te]:
+        for d in [y_real_tr,y_real_te,y_syn_tr,y_syn_te]:
             output_list = []
             for label in [x for x in labels if 'race' not in x]:
-                output_list.append(data[label].to_numpy().astype(float))
+                output_list.append(d[label].to_numpy().astype(float))
             if sum(x.count('race') for x in labels)>0:
-                output_list.append(data[[x for x in labels if 'race' in x]].to_numpy().astype(float))
+                output_list.append(d[[x for x in labels if 'race' in x]].to_numpy().astype(float))
             y_list.append(output_list)
         y_real_tr,y_real_te,y_syn_tr,y_syn_te = y_list
         
@@ -101,7 +102,8 @@ def privacy_AIA(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version):
             monitor='val_loss',
             mode='min',
             save_best_only=True)
-        model.fit(x_syn_tr,y_syn_tr,epochs=10,batch_size=32,validation_split=.2,callbacks=[model_checkpoint_callback])
+        model.fit(x_syn_tr,y_syn_tr,epochs=hparams['epochs'],batch_size=hparams['batch_size'],
+                  validation_split=.2,callbacks=[model_checkpoint_callback])
         model.load_weights(checkpoint_filepath)
         preds = model.predict(x_real_te)
 
@@ -145,10 +147,9 @@ if __name__=='__main__':
         file = file+'.pkl'
         with open(os.path.join(load_path,file),'rb') as f:
             data.append(pickle.load(f))
-    X_real_tr,X_real_te,X_syn_tr,X_syn_te = data
-
-
-    privacy_AIA(X_real_tr,X_real_te,X_syn_tr,X_syn_te,syn_model,version)
+    
+    hparams = {}
+    privacy_AIA(data=data,syn_model=syn_model,version=version,hparams=hparams)
     
             
             
