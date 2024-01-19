@@ -11,64 +11,76 @@ from dtwParallel import dtw_functions
 
 #model for GoF testing
 class GoF_RNN(keras.Model):
-    def __init__(self):
+    def __init__(self,config):
         super().__init__()
-        self.dense = layers.Dense(100,activation='relu')
-        self.recurrent = layers.LSTM(100,activation='relu')
-        self.concat = layers.Concatenate(axis=1)
-        self.process_1 = layers.Dense(100,activation='relu')
-        self.process_2 = layers.Dense(50,activation='relu')
-        self.classify = layers.Dense(1,activation='sigmoid')
+        self.build_model(config)
+
+    def build_model(self,config):
+        input_layer = layers.Input(shape=config['input_shape'])
+        #first layer consists of separate processing layers
+        x_attr = layers.Dense(config['hidden_units'][0],activation=config['activation'])(input_layer)
+        x_feat = layers.GRU(config['hidden_units'][0],activation=config['activation'])(input_layer)
+        x = layers.Concatenate(axis=1)([x_attr,x_feat])
+        #rest is just feedforward so can be done in a loop
+        config['hidden_units'] = config['hidden_units'][1:]
+        for units in config['hidden_units']:
+            x = layers.Dropout(config['dropout_rate'])(x)
+            x = layers.Dense(units,activation=config['activation'])(x)
+        output_layer = layers.Dense(config['output_units'],activation='sigmoid')(x)
+        
+        self.model = keras.Model(inputs=input_layer,outputs=output_layer)
 
     def call(self, inputs):
-        attributes,longitudinal = inputs
-        attr = self.dense(attributes)
-        long = self.recurrent(longitudinal)
-        x = self.concat([attr,long])
-        x = self.process_1(x)
-        x = self.process_2(x)
-        return self.classify(x)
-
-#model for patient trajectory forecasting
+        return self.model(inputs)
+    
 class trajectory_RNN_simple(keras.Model):
-    def __init__(self,output_size):
+    def __init__(self,config):
         super().__init__()
-        self.dense = layers.Dense(100,activation='relu')
-        self.recurrent = layers.LSTM(100,activation='relu')
-        self.concat = layers.Concatenate(axis=1)
-        self.process_1 = layers.Dense(100,activation='relu')
-        self.process_2 = layers.Dense(50,activation='relu')
-        self.classify = layers.Dense(output_size,activation='softmax')
+        self.build_model(config)
+
+    def build_model(self,config):
+        input_layer = layers.Input(shape=config['input_shape'])
+        #first layer consists of separate processing layers
+        x_attr = layers.Dense(config['hidden_units'][0],activation=config['activation'])(input_layer)
+        x_feat = layers.GRU(config['hidden_units'][0],activation=config['activation'])(input_layer)
+        x = layers.Concatenate(axis=1)([x_attr,x_feat])
+        #rest is just feedforward so can be done in a loop
+        config['hidden_units'] = config['hidden_units'][1:]
+        for units in config['hidden_units']:
+            x = layers.Dropout(config['dropout_rate'])(x)
+            x = layers.Dense(units,activation=config['activation'])(x)
+        output_layer = layers.Dense(config['output_units'],activation='softmax')(x)
+        
+        self.model = keras.Model(inputs=input_layer,outputs=output_layer)
 
     def call(self, inputs):
-        attributes,sequences = inputs
-        attr = self.dense(attributes)
-        long = self.recurrent(sequences)
-        x = self.concat([attr,long])
-        x = self.process_1(x)
-        x = self.process_2(x)
-        return self.classify(x)
+        return self.model(inputs)
+      
+
+class mortality_RNN_simple(keras.Model):
+    def __init__(self,config):
+        super().__init__()
+        self.build_model(config)
+
+    def build_model(self,config):
+        input_layer = layers.Input(shape=config['input_shape'])
+        #first layer consists of separate processing layers
+        x_attr = layers.Dense(config['hidden_units'][0],activation=config['activation'])(input_layer)
+        x_feat = layers.GRU(config['hidden_units'][0],activation=config['activation'])(input_layer)
+        x = layers.Concatenate(axis=1)([x_attr,x_feat])
+        #rest is just feedforward so can be done in a loop
+        config['hidden_units'] = config['hidden_units'][1:]
+        for units in config['hidden_units']:
+            x = layers.Dropout(config['dropout_rate'])(x)
+            x = layers.Dense(units,activation=config['activation'])(x)
+        output_layer = layers.Dense(config['output_units'],activation='sigmoid')(x)
+        
+        self.model = keras.Model(inputs=input_layer,outputs=output_layer)
+
+    def call(self, inputs):
+        return self.model(inputs)
     
 
-#models for mortality prediction
-class mortality_RNN_simple(keras.Model):
-    def __init__(self):
-        super().__init__()
-        self.dense = layers.Dense(100,activation='relu')
-        self.recurrent = layers.LSTM(100,activation='relu')
-        self.concat = layers.Concatenate(axis=1)
-        self.process_1 = layers.Dense(100,activation='relu')
-        self.process_2 = layers.Dense(50,activation='relu')
-        self.classify = layers.Dense(1,activation='sigmoid')
-
-    def call(self, inputs):
-        attributes,longitudinal = inputs
-        attr = self.dense(attributes)
-        long = self.recurrent(longitudinal)
-        x = self.concat([attr,long])
-        x = self.process_1(x)
-        x = self.process_2(x)
-        return self.classify(x)
     
 class mortality_LR(LogisticRegression):
     def __init__(self, penalty='elasticnet', l1_ratio=0.5,):
@@ -86,6 +98,46 @@ class mortality_RF(RandomForestClassifier):
             max_depth=max_depth
         )
     
+
+class privacy_RNN(keras.Model):
+    def __init__(self,config,labels):
+        super().__init__()
+        self.labels=labels
+        self.build_model(config)
+        self.race_size = sum(l.count('race') for l in self.labels)
+        #initialize the output layers with names
+        self.output_age = layers.Dense(1,activation='linear',name='output_1')
+        self.output_gender = layers.Dense(1,activation='sigmoid',name='output_2')
+        self.output_race = layers.Dense(self.race_size,activation='softmax',name='output_3')
+
+    def build_model(self,config):
+        #separate processing layers for static and temporal data
+        input_layer = layers.Input(config['input_shape'])
+        x_attr = layers.Dense(config['hidden_units'][0],activation=config['activation'])(input_layer)
+        x_feat = layers.GRU(config['hidden_units'][0],activation=config['activation'])(input_layer)
+        x = layers.Concatenate(axis=1)([x_attr,x_feat])
+        config['hidden_units'] = config['hidden_units'][1:]
+        #after concatenating we can add layers in a loop
+        for units in config['hidden_units']:
+            x = layers.Dropout(config['dropout_rate'])(x)
+            x = layers.Dense(units,activation=config['activation'])(x)
+        
+        #output layer is conditional on input labels
+        output_layer = []
+        if 'age' in self.labels:
+            output_layer.append(self.output_age(x))
+        if 'gender' in self.labels:
+            output_layer.append(self.output_gender(x))
+        if self.race_size>0:
+            output_layer.append(self.output_race(x))
+        
+        self.model = keras.Model(inputs=input_layer,outputs=output_layer)
+
+    def call(self, inputs):
+        return self.model(inputs)
+        
+    
+
 #tSNE projection plot, color coded by label
 def tsne(distance_matrix,labels):
     embeddings = TSNE(n_components=2,init='random',metric='precomputed').fit_transform(distance_matrix)
@@ -122,36 +174,3 @@ def mts_gower_matrix(data,cat_features=None):
     #to see progress, we can import tqdm and use it in dtwParallel package -> @ dtw_functions.dtw_tensor_3d 
     timevarying_distance = dtw_functions.dtw_tensor_3d(data,data,input_obj,cat_features)
     return timevarying_distance
-
-class privacy_RNN(keras.Model):
-    def __init__(self,labels):
-        super().__init__()
-        self.labels=labels
-        nodes_at_input = 100
-        self.recurrent_input = layers.LSTM(nodes_at_input,activation='relu')
-        self.dense_input = layers.Dense(nodes_at_input,activation='relu')
-        self.concat = layers.Concatenate(axis=1)
-        self.process1 = layers.Dense(int(nodes_at_input),activation='relu')
-        self.process2 = layers.Dense(int(nodes_at_input/2),activation='relu')
-        self.output_age = layers.Dense(1,activation='linear',name='output_1')
-        self.output_gender = layers.Dense(1,activation='sigmoid',name='output_2')
-        self.race_size = sum(l.count('race') for l in self.labels)
-        self.output_race = layers.Dense(self.race_size,activation='softmax',name='output_3')
-        
-        
-    def call(self, inputs):
-        attr, long = inputs 
-        attr = self.dense_input(attr)
-        long = self.recurrent_input(long)
-        x = self.concat([attr, long])
-        x = self.process1(x)
-        x = self.process2(x)
-        #specify which outputs are used
-        outputs = []
-        if 'age' in self.labels:
-            outputs.append(self.output_age(x))
-        if 'gender' in self.labels:
-            outputs.append(self.output_gender(x))
-        if self.race_size>0:
-            outputs.append(self.output_race(x))
-        return outputs
