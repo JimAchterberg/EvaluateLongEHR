@@ -29,11 +29,21 @@ def exec_descr_stats(real_df,syn_df,result_path):
     real_freqmatrix = metrics.rel_freq_matrix(data=real_df,columns='icd_code')
     syn_freqmatrix = metrics.rel_freq_matrix(data=syn_df,columns='icd_code')
     diff_freqmatrix = real_freqmatrix-syn_freqmatrix
-    diff_matrixplot = metrics.freq_matrix_plot(diff_freqmatrix,range=None)
-    diff_matrixplot.title('Synthetic/real ICD section frequency difference')
-    filename = 'freq_diff_matrixplot.png'
-    diff_matrixplot.savefig(os.path.join(result_path,filename))
-    #diff_matrixplot.show()
+
+    real_freqmatrix = metrics.freq_matrix_plot(real_freqmatrix,range=None)
+    real_freqmatrix.title('Real ICD section frequencies')
+    filename = 'real_matrixplot.png'
+    real_freqmatrix.savefig(os.path.join(result_path,filename))
+    
+    syn_freqmatrix = metrics.freq_matrix_plot(syn_freqmatrix,range=None)
+    syn_freqmatrix.title('Synthetic ICD section frequencies')
+    filename = 'syn_matrixplot.png'
+    syn_freqmatrix.savefig(os.path.join(result_path,filename))
+
+    diff_freqmatrix = metrics.freq_matrix_plot(diff_freqmatrix,range=None)
+    diff_freqmatrix.title('Synthetic/real ICD section frequency difference')
+    filename = 'diff_matrixplot.png'
+    diff_freqmatrix.savefig(os.path.join(result_path,filename))
 
 #executes the tsne step
 def exec_tsne(real_df,syn_df,result_path):
