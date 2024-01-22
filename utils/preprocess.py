@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
-from keras.preprocessing.sequence import pad_sequences
+
 
 
 #get static attribute table in which values are not repeated
@@ -9,9 +9,6 @@ def get_static(data,columns,subject_idx='subject_id'):
     return data.groupby(subject_idx)[columns].first()
 
 
-#takes list of lists of sequences as input and transforms into padded 3d numpy array
-def sequences_to_3d(list,maxlen,padding=-1):
-    return np.expand_dims(pad_sequences(list, maxlen=maxlen, padding='post',value=padding),-1)
 
 #get 2d timevarying data to 3d numpy array (necessary when data is multi-column)
 def df_to_3d(df,cols,subject_idx='subject_id',timestep_idx='seq_num',padding=-1,pad_to=None):

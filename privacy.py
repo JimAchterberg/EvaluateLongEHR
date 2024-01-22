@@ -72,17 +72,17 @@ def privacy_AIA(data,syn_model,version,hparams):
         if 'age' in labels:
             key = 'output_'+str(var_count)
             losses[key] = 'mse'
-            metric[key] = 'mse'
+            metric[key] = keras.metrics.MeanSquaredError()
             var_count+=1
         if 'gender' in labels:
             key = 'output_'+str(var_count)
             losses[key] = 'binary_crossentropy'
-            metric[key] = 'accuracy'
+            metric[key] = keras.metrics.Accuracy()
             var_count+=1
         if sum(l.count('race') for l in labels)>0:
             key = 'output_'+str(var_count)
             losses[key] = 'categorical_crossentropy'
-            metric[key] = 'accuracy'
+            metric[key] = keras.metrics.CategoricalAccuracy()
 
         model.compile(optimizer='Adam',loss=losses,metrics=metric)
 
@@ -119,6 +119,12 @@ def privacy_AIA(data,syn_model,version,hparams):
 
             f.write('Labels for this iteration: '+str(labels)+'\n')
             var_count = 0
+
+            #preds is a numpy array if size=1 else list of arrays
+            #but ytest is a list of arrays
+            #for easy use preds should always be a list
+            if not isinstance(preds,list):
+                preds = [preds]
             if 'age' in labels:
                 #rescale age to original range
                 y_real_te[var_count] = age_scaler.reverse_transform(y_real_te[var_count])
@@ -135,7 +141,7 @@ def privacy_AIA(data,syn_model,version,hparams):
                 var_count+=1
             if sum(x.count('race') for x in labels)>0:
                 metric = metrics.accuracy(np.concatenate(y_real_te[var_count:],axis=1),
-                                        np.squeeze(np.round(preds[var_count:]),0))
+                                        np.concatenate(np.round(preds[var_count:]),axis=1))
                 f.write('race accuracy is: '+str(metric)+'\n')
             f.write('\n')
 
@@ -144,7 +150,7 @@ if __name__=='__main__':
 #load real and synthetic data
     path = 'C:/Users/Jim/Documents/thesis_paper/data'
     version = 'v0.0'
-    syn_model = 'dgan'
+    syn_model = 'cpar'
     
     load_path = path + '/processed' + '/preprocessed_eval' + f'/{syn_model}' + f'/{version}' 
     files = ['X_real_tr','X_real_te','X_syn_tr','X_syn_te']
@@ -154,9 +160,9 @@ if __name__=='__main__':
         with open(os.path.join(load_path,file),'rb') as f:
             data.append(pickle.load(f))
     
-    hparams = {'EPOCHS':1000,
-               'BATCH_SIZE':128,
-               'HIDDEN_UNITS':[100,100,50,30],
+    hparams = {'EPOCHS':10,
+               'BATCH_SIZE':16,
+               'HIDDEN_UNITS':[100,100],
                'ACTIVATION':'relu',
                'DROPOUT_RATE':.2
                }

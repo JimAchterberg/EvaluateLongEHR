@@ -149,7 +149,7 @@ def trajectory_prediction(data,hparams,syn_model,version):
             f.write('Real accuracy: ' + str(real_acc) + '\n')
             f.write('Synthetic accuracy: ' + str(syn_acc) + '\n')
             
-def mortality_prediction(syn_model,version,hparams,pred_model='RNN'):
+def mortality_prediction(data,syn_model,version,hparams,pred_model='RNN'):
     X_real_tr,X_real_te,X_syn_tr,X_syn_te = data
     result_path = os.path.join('results',syn_model,version)
     if not os.path.exists(result_path):
@@ -301,8 +301,8 @@ if __name__=='__main__':
                  'MAX_DEPTH':None}
     lr_params = {'L1':.5}
 
-    GoF(data=data,syn_model=syn_model,version=version,hparams=nn_params)
-    trajectory_prediction(data=data,syn_model=syn_model,version=version,hparams=nn_params)
+    #GoF(data=data,syn_model=syn_model,version=version,hparams=nn_params)
+    #trajectory_prediction(data=data,syn_model=syn_model,version=version,hparams=nn_params)
     mortality_prediction(data=data,syn_model=syn_model,version=version,pred_model='RNN',hparams=nn_params)
     mortality_prediction(data=data,syn_model=syn_model,version=version,pred_model='RF',hparams=rf_params)
     mortality_prediction(data=data,syn_model=syn_model,version=version,pred_model='LR',hparams=lr_params)
