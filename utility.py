@@ -291,9 +291,9 @@ if __name__=='__main__':
         with open(os.path.join(load_path,file),'rb') as f:
             data.append(pickle.load(f))
 
-    nn_params = {'EPOCHS':1000,
-               'BATCH_SIZE':128,
-               'HIDDEN_UNITS':[100,100,50,30],
+    nn_params = {'EPOCHS':10,
+               'BATCH_SIZE':16,
+               'HIDDEN_UNITS':[100,100],
                'ACTIVATION':'relu',
                'DROPOUT_RATE':.2
                }

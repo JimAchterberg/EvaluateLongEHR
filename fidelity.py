@@ -76,14 +76,14 @@ def exec_tsne(real_df,syn_df,result_path):
 
 if __name__ == '__main__':
     #load real and synthetic data
-    path = 'C:/Users/Jim/Documents/thesis_paper/data'
+    path = 'C:/Users/Jim/Documents/thesis_paper'
     version = 'v0.0'
-    syn_model = 'cpar'
+    syn_model = 'dgan'
 
-    load_path = path + '/processed' + '/generated' 
+    load_path = path #+ '/processed' + '/generated' 
     cols = ['subject_id','seq_num','icd_code','gender','age','deceased','race']
-    real_df = pd.read_csv(load_path+'/real/real.csv.gz',sep=',',compression='gzip',usecols=cols)
-    syn_df = pd.read_csv(load_path+f'/{syn_model}/{syn_model}_{version}.csv.gz',sep=',',compression='gzip',usecols=cols)
+    real_df = pd.read_csv(load_path+'/real.csv.gz',sep=',',compression='gzip',usecols=cols)
+    syn_df = pd.read_csv(load_path+f'/{syn_model}_{version}.csv.gz',sep=',',compression='gzip',usecols=cols)
 
     result_path = os.path.join('results',syn_model,version)
     if not os.path.exists(result_path):
