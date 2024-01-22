@@ -39,7 +39,14 @@ def GoF(data,hparams,syn_model,version):
         mode='max',
         save_best_only=True)
         #instantiate and fit model
-        model = models.GoF_RNN()
+        config = {'input_shape_attr':(X_train[0].shape[1],),
+                  'input_shape_feat':(X_train[1].shape[1],X_train[1].shape[2],),
+                  #first layer is separate processing, afterwards joint Dense layers
+                  'hidden_units':hparams['HIDDEN_UNITS'],
+                  'dropout_rate':hparams['DROPOUT_RATE'],
+                  'activation':hparams['ACTIVATION']
+                  }
+        model = models.GoF_RNN(config=config)
         model.compile(optimizer='Adam',loss='binary_crossentropy',metrics='accuracy')
         model.fit(X_train,y_train,batch_size=hparams['BATCH_SIZE'],epochs=hparams['EPOCHS'],
                   validation_split=.2,callbacks=[model_checkpoint_callback])
@@ -113,7 +120,15 @@ def trajectory_prediction(data,hparams,syn_model,version):
             monitor='val_accuracy',
             mode='max',
             save_best_only=True)
-            model = models.trajectory_RNN_simple(output_size=y_tr.shape[1])
+            config = {'input_shape_attr':(X_tr[0].shape[1],),
+                  'input_shape_feat':(X_tr[1].shape[1],X_tr[1].shape[2],),
+                  #first layer is separate processing, afterwards joint Dense layers
+                  'hidden_units':hparams['HIDDEN_UNITS'],
+                  'dropout_rate':hparams['DROPOUT_RATE'],
+                  'activation':hparams['ACTIVATION'],
+                  'output_units':y_tr.shape[1]
+                  }
+            model = models.trajectory_RNN_simple(config=config)
             model.compile(optimizer='Adam',loss='categorical_crossentropy',metrics='accuracy')
             model.fit(X_tr,y_tr,batch_size=hparams['BATCH_SIZE'],epochs=hparams['EPOCHS'],
                       validation_split=.2,callbacks=[model_checkpoint_callback])
@@ -186,7 +201,14 @@ def mortality_prediction(syn_model,version,hparams,pred_model='RNN'):
             monitor='val_accuracy',
             mode='max',
             save_best_only=True)
-            model = models.mortality_RNN_simple()
+            config = {'input_shape_attr':(X_tr[0].shape[1],),
+                  'input_shape_feat':(X_tr[1].shape[1],X_tr[1].shape[2],),
+                  #first layer is separate processing, afterwards joint Dense layers
+                  'hidden_units':hparams['HIDDEN_UNITS'],
+                  'dropout_rate':hparams['DROPOUT_RATE'],
+                  'activation':hparams['ACTIVATION']
+                  }
+            model = models.mortality_RNN_simple(config=config)
             model.compile(optimizer='Adam',loss='binary_crossentropy',metrics='accuracy')
             model.fit(X_tr,y_tr,batch_size=hparams['BATCH_SIZE'],epochs=hparams['EPOCHS'],
                       validation_split=.2,callbacks=[model_checkpoint_callback])
@@ -270,7 +292,10 @@ if __name__=='__main__':
             data.append(pickle.load(f))
 
     nn_params = {'EPOCHS':1000,
-               'BATCH_SIZE':128
+               'BATCH_SIZE':128,
+               'HIDDEN_UNITS':[100,100,50,30],
+               'ACTIVATION':'relu',
+               'DROPOUT_RATE':.2
                }
     rf_params = {'N_TREES':100,
                  'MAX_DEPTH':None}

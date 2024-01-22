@@ -26,7 +26,7 @@ class GoF_RNN(keras.Model):
         for units in config['hidden_units']:
             x = layers.Dropout(config['dropout_rate'])(x)
             x = layers.Dense(units,activation=config['activation'])(x)
-        output_layer = layers.Dense(config['output_units'],activation='sigmoid')(x)
+        output_layer = layers.Dense(1,activation='sigmoid')(x)
         
         self.model = keras.Model(inputs=input_layer,outputs=output_layer)
 
@@ -39,10 +39,12 @@ class trajectory_RNN_simple(keras.Model):
         self.build_model(config)
 
     def build_model(self,config):
-        input_layer = layers.Input(shape=config['input_shape'])
+        input_attr = layers.Input(shape=config['input_shape_attr'])
+        input_feat = layers.Input(shape=config['input_shape_feat'])
+
         #first layer consists of separate processing layers
-        x_attr = layers.Dense(config['hidden_units'][0],activation=config['activation'])(input_layer)
-        x_feat = layers.GRU(config['hidden_units'][0],activation=config['activation'])(input_layer)
+        x_attr = layers.Dense(config['hidden_units'][0],activation=config['activation'])(input_attr)
+        x_feat = layers.GRU(config['hidden_units'][0],activation=config['activation'])(input_feat)
         x = layers.Concatenate(axis=1)([x_attr,x_feat])
         #rest is just feedforward so can be done in a loop
         config['hidden_units'] = config['hidden_units'][1:]
@@ -51,7 +53,7 @@ class trajectory_RNN_simple(keras.Model):
             x = layers.Dense(units,activation=config['activation'])(x)
         output_layer = layers.Dense(config['output_units'],activation='softmax')(x)
         
-        self.model = keras.Model(inputs=input_layer,outputs=output_layer)
+        self.model = keras.Model(inputs=[input_attr,input_feat],outputs=output_layer)
 
     def call(self, inputs):
         return self.model(inputs)
@@ -73,7 +75,7 @@ class mortality_RNN_simple(keras.Model):
         for units in config['hidden_units']:
             x = layers.Dropout(config['dropout_rate'])(x)
             x = layers.Dense(units,activation=config['activation'])(x)
-        output_layer = layers.Dense(config['output_units'],activation='sigmoid')(x)
+        output_layer = layers.Dense(1,activation='sigmoid')(x)
         
         self.model = keras.Model(inputs=input_layer,outputs=output_layer)
 

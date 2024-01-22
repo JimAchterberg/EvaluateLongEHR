@@ -54,9 +54,15 @@ def privacy_AIA(data,syn_model,version,hparams):
             x.append([x0,data[1].astype(float)]) 
         x_real_tr,x_real_te,x_syn_tr,x_syn_te = x 
         y_real_tr,y_real_te,y_syn_tr,y_syn_te = y 
-
+        config = {'input_shape_attr':(x_real_tr[0].shape[1],),
+                  'input_shape_feat':(x_real_tr[1].shape[1],x_real_tr[1].shape[2],),
+                  #first layer is separate processing, afterwards joint Dense layers
+                  'hidden_units':hparams['HIDDEN_UNITS'],
+                  'dropout_rate':hparams['DROPOUT_RATE'],
+                  'activation':hparams['ACTIVATION']
+                  }
         #build the model, which takes account of input labels and builds output layer accordingly
-        model = models.privacy_RNN(labels)
+        model = models.privacy_RNN(labels=labels,config=config)
         #specify the loss functions and metrics we require
         #note that the output layer names are output_1 , output_2, output_3 and are dynamic not fixed
         #changing this is TBD (however does not seem possible due to dynamic structure of the model)
@@ -102,7 +108,7 @@ def privacy_AIA(data,syn_model,version,hparams):
             monitor='val_loss',
             mode='min',
             save_best_only=True)
-        model.fit(x_syn_tr,y_syn_tr,epochs=hparams['epochs'],batch_size=hparams['batch_size'],
+        model.fit(x_syn_tr,y_syn_tr,epochs=hparams['EPOCHS'],batch_size=hparams['BATCH_SIZE'],
                   validation_split=.2,callbacks=[model_checkpoint_callback])
         model.load_weights(checkpoint_filepath)
         preds = model.predict(x_real_te)
@@ -148,7 +154,12 @@ if __name__=='__main__':
         with open(os.path.join(load_path,file),'rb') as f:
             data.append(pickle.load(f))
     
-    hparams = {}
+    hparams = {'EPOCHS':1000,
+               'BATCH_SIZE':128,
+               'HIDDEN_UNITS':[100,100,50,30],
+               'ACTIVATION':'relu',
+               'DROPOUT_RATE':.2
+               }
     privacy_AIA(data=data,syn_model=syn_model,version=version,hparams=hparams)
     
             
