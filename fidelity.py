@@ -30,12 +30,12 @@ def exec_descr_stats(real_df,syn_df,result_path):
     syn_freqmatrix = metrics.rel_freq_matrix(data=syn_df,columns='icd_code')
     diff_freqmatrix = real_freqmatrix-syn_freqmatrix
 
-    real_freqmatrix = metrics.freq_matrix_plot(real_freqmatrix,range=None)
+    real_freqmatrix = metrics.freq_matrix_plot(real_freqmatrix,range=(0,.8))
     real_freqmatrix.title('Real ICD section frequencies')
     filename = 'real_matrixplot.png'
     real_freqmatrix.savefig(os.path.join(result_path,filename))
     
-    syn_freqmatrix = metrics.freq_matrix_plot(syn_freqmatrix,range=None)
+    syn_freqmatrix = metrics.freq_matrix_plot(syn_freqmatrix,range=(0,.8))
     syn_freqmatrix.title('Synthetic ICD section frequencies')
     filename = 'syn_matrixplot.png'
     syn_freqmatrix.savefig(os.path.join(result_path,filename))
@@ -45,19 +45,29 @@ def exec_descr_stats(real_df,syn_df,result_path):
     filename = 'diff_matrixplot.png'
     diff_freqmatrix.savefig(os.path.join(result_path,filename))
 
+def timesteps(real_df,syn_df,result_path):
+    r_tsteps = real_df.groupby('subject_id').seq_num.max()
+    s_tsteps = syn_df.groupby('subject_id').seq_num.max()
+    timesteps_plot = metrics.plot_max_timesteps(r_tsteps,s_tsteps)
+    timesteps_plot.title('Maximum #timesteps per sample')
+    filename =  'timestep_plot.png'
+    timesteps_plot.savefig(os.path.join(result_path,filename))
+
+
 #executes the tsne step
 def exec_tsne(real_df,syn_df,result_path):
     df = pd.concat([real_df,syn_df],axis=0)
-    static = preprocess.get_static(df,['age','gender','deceased','race']).astype(float)
-    seq = preprocess.df_to_3d(df,cols=['icd_code'],padding=-1).astype(str)
+    static = preprocess.get_static(df,['age','gender','deceased','race'])
+    static.age = static.age.astype(float)
+    seq = preprocess.df_to_3d(df,cols=['icd_code'],padding='-1')
 
     #find distance matrices
     static_distances = models.static_gower_matrix(static,cat_features=[False,True,True,True])
     timevarying_distances = models.mts_gower_matrix(seq)#,cat_features=[True])
 
     # scale static and timevarying distances to similar range (while diagonal remains zero)
-    static_distances = np.apply_along_axis(preprocess.zero_one_scale,0,static_distances)
-    timevarying_distances = np.apply_along_axis(preprocess.zero_one_scale,0,timevarying_distances)
+    #static_distances = np.apply_along_axis(preprocess.zero_one_scale,0,static_distances)
+    #timevarying_distances = np.apply_along_axis(preprocess.zero_one_scale,0,timevarying_distances)
 
     # # take weighted sum of static and timevarying distances
     distance_matrix = ((len(static.columns))/len(df.columns))*static_distances + \
@@ -82,13 +92,23 @@ if __name__ == '__main__':
 
     load_path = path #+ '/processed' + '/generated' 
     cols = ['subject_id','seq_num','icd_code','gender','age','deceased','race']
-    real_df = pd.read_csv(load_path+'/real_'+version+'.csv.gz',sep=',',compression='gzip',usecols=cols)
-    syn_df = pd.read_csv(load_path+f'/{syn_model}_{version}.csv.gz',sep=',',compression='gzip',usecols=cols)
+    real_df = pd.read_csv(load_path+'/real.csv.gz',sep=',',compression='gzip',usecols=cols)
+    syn_df = pd.read_csv(load_path+f'/{syn_model}_{version}.csv.gz',sep=',',compression='gzip',usecols=None)
 
     result_path = os.path.join('results',syn_model,version)
     if not os.path.exists(result_path):
         os.makedirs(result_path)
 
+    max_t = real_df.seq_num.max()
+    syn_df = syn_df[syn_df.seq_num<=max_t]
     #exec_tsne(real_df,syn_df,result_path)
-    syn_df = syn_df[syn_df.seq_num<=37]
+    
+    
+
+
+
+    syn_df = syn_df[cols]
+    timesteps(real_df,syn_df,result_path)
     exec_descr_stats(real_df,syn_df,result_path)
+        
+    

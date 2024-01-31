@@ -178,5 +178,5 @@ def mts_gower_matrix(data,cat_features=None):
             self.sakoe_chiba_radius = None
     input_obj = Input()
     #to see progress, we can import tqdm and use it in dtwParallel package -> @ dtw_functions.dtw_tensor_3d 
-    timevarying_distance = dtw_functions.dtw_tensor_3d(data,data,input_obj,cat_features)
+    timevarying_distance = dtw_functions.dtw_tensor_3d(data,data,input_obj)
     return timevarying_distance

@@ -66,3 +66,23 @@ def GoF_kdeplot(pred,y_test):
     plt.ylabel('Frequency')
     plt.legend()
     return plt 
+
+def plot_max_timesteps(r_tsteps,s_tsteps):
+    _,bins,_ = plt.hist(s_tsteps,bins='auto',color='red',label='Synthetic',alpha=.5)
+    plt.hist(r_tsteps,bins=bins,color='blue',label='Real',alpha=.5)
+    plt.xlabel('Max Timesteps')
+    plt.ylabel('Frequency')
+    plt.legend()
+    return plt
+
+def descr_stats_output():
+    path = 'C:/Users/Jim/Documents/thesis_paper'
+    file = '/descr_stats_staticcategorical_final.csv'
+
+    df = pd.read_csv(path+file,sep=';',index_col=0)
+    df.plot(kind='bar',width=.5,color=['blue','red','pink'])
+
+    plt.errorbar(-.25,df['Real']['Age/100'],yerr=.125, color='black', capsize=3)
+    plt.errorbar(0,df['CPAR']['Age/100'],yerr=.135, color='black', capsize=3)
+    plt.errorbar(.25,df['DGAN']['Age/100'],yerr=.108, color='black', capsize=3)
+    plt.show()
