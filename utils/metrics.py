@@ -74,7 +74,7 @@ def plot_max_timesteps(r_tsteps,s_tsteps):
     plt.ylabel('Frequency')
     plt.legend()
     return plt
-
+import os
 def descr_stats_output():
     path = 'C:/Users/Jim/Documents/thesis_paper'
     file = '/descr_stats_staticcategorical_final.csv'
@@ -85,4 +85,5 @@ def descr_stats_output():
     plt.errorbar(-.25,df['Real']['Age/100'],yerr=.125, color='black', capsize=3)
     plt.errorbar(0,df['CPAR']['Age/100'],yerr=.135, color='black', capsize=3)
     plt.errorbar(.25,df['DGAN']['Age/100'],yerr=.108, color='black', capsize=3)
+    plt.savefig(os.path.join('results','descr_stats.png'))
     plt.show()
