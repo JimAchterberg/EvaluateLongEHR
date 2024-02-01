@@ -280,7 +280,7 @@ def mortality_prediction(data,syn_model,version,hparams,pred_model='RNN'):
 if __name__=='__main__':  
 #load real and synthetic data
     path = 'C:/Users/Jim/Documents/thesis_paper/data'
-    version = 'v0.0'
+    version = 'v0.1'
     syn_model = 'cpar'
     
     load_path = path + '/processed' + '/preprocessed_eval' + f'/{syn_model}' + f'/{version}' 
@@ -303,8 +303,8 @@ if __name__=='__main__':
 
     #GoF(data=data,syn_model=syn_model,version=version,hparams=nn_params)
     #trajectory_prediction(data=data,syn_model=syn_model,version=version,hparams=nn_params)
-    mortality_prediction(data=data,syn_model=syn_model,version=version,pred_model='RNN',hparams=nn_params)
-    mortality_prediction(data=data,syn_model=syn_model,version=version,pred_model='RF',hparams=rf_params)
-    mortality_prediction(data=data,syn_model=syn_model,version=version,pred_model='LR',hparams=lr_params)
+    #mortality_prediction(data=data,syn_model=syn_model,version=version,pred_model='RNN',hparams=nn_params)
+    #mortality_prediction(data=data,syn_model=syn_model,version=version,pred_model='RF',hparams=rf_params)
+    #mortality_prediction(data=data,syn_model=syn_model,version=version,pred_model='LR',hparams=lr_params)
 
     

@@ -17,7 +17,12 @@ def df_to_3d(df,cols,subject_idx='subject_id',timestep_idx='seq_num',padding='-1
         t = max(df[timestep_idx])
     else: 
         t = pad_to
-    seq = np.full((df[subject_idx].nunique(),t,len(cols)),padding,dtype=object)
+    #check if we need an object np array or float
+    if type(padding)==str:
+        dtype=object
+    else:
+        dtype=int
+    seq = np.full((df[subject_idx].nunique(),t,len(cols)),padding,dtype=dtype)
     for idx,(_,subject) in enumerate(df.groupby(subject_idx)[cols]):
         seq[idx,:subject.shape[0],:] = subject
     return seq

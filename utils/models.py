@@ -8,6 +8,7 @@ from matplotlib import pyplot as plt
 from sklearn.manifold import TSNE
 from gower import gower_matrix
 from dtwParallel import dtw_functions
+from scipy.spatial import distance
 
 #model for GoF testing
 class GoF_RNN(keras.Model):
@@ -164,18 +165,18 @@ def mts_gower_matrix(data,cat_features=None):
     class Input:
         def __init__(self):
             self.check_errors = False 
-            self.type_dtw = "d"
-            self.constrained_path_search = None
+            self.type_dtw = "i"
+            self.constrained_path_search = 'sakoe_chiba'
             self.MTS = True
-            self.regular_flag = '-1'
+            self.regular_flag = -1
             self.n_threads = -1
-            self.local_dissimilarity = "gower"
+            self.local_dissimilarity = distance.hamming
             self.visualization = False
             self.output_file = False
             self.dtw_to_kernel = False
             self.sigma_kernel = None
             self.itakura_max_slope = None
-            self.sakoe_chiba_radius = None
+            self.sakoe_chiba_radius = 5
     input_obj = Input()
     #to see progress, we can import tqdm and use it in dtwParallel package -> @ dtw_functions.dtw_tensor_3d 
     timevarying_distance = dtw_functions.dtw_tensor_3d(data,data,input_obj)

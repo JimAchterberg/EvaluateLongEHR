@@ -7,8 +7,20 @@ import pickle
 
 # #preprocess data for evaluation
 def preprocess_eval(real_df,syn_df):
-    #ONE HOT ENCODE
+    #pool data together (for encoding entire vocabulary)
     df = pd.concat([real_df,syn_df],axis=0)
+
+    #factorize object columns (and save mapping to csv for later checking)
+    mapping = []
+    for col in ['gender','deceased','race','icd_code']:
+        df[col],map = pd.factorize(df[col])
+        mapping.append(map)
+    save_dir = 'results/preprocess'
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    pd.DataFrame(mapping).to_csv(save_dir+'/variable_mapping.csv')
+
+    #one hot encode
     for col in ['race','icd_code']:
         dummies = pd.get_dummies(df[col],prefix=col)
         df = pd.concat([df,dummies],axis=1)
@@ -42,31 +54,33 @@ if __name__=='__main__':
     #------------------------------------------------------------------------------
     #LOAD DATA
     #load real and synthetic data
-    path = 'C:/Users/Jim/Documents/thesis_paper/data'
-    version = 'v0.0'
+    path = 'C:/Users/Jim/Documents/thesis_paper'
+    version = 'v0.1'
     model = 'cpar'
-    load_path = path + '/processed' + '/generated'
+    load_path = path #+ '/processed' + '/generated'
 
     cols = ['subject_id','seq_num','icd_code','gender','age','deceased','race']
-    real_df = pd.read_csv(load_path+'/real'+'/real.csv.gz',sep=',',compression='gzip',usecols=cols)
-    syn_df = pd.read_csv(load_path+f'/{model}'+f'/{model}_{version}.csv.gz',sep=',',compression='gzip',usecols=cols)
+    real_df = pd.read_csv(load_path+'/real.csv.gz',sep=',',compression='gzip',usecols=cols)
+    syn_df = pd.read_csv(load_path+f'/{model}_{version}.csv.gz',sep=',',compression='gzip',usecols=cols)
 
-    
-    #------------------------------------------------------------------------------
-    #preprocess real and synthetic data to train and test sets
+
+
+    # #------------------------------------------------------------------------------
+    # #preprocess real and synthetic data to train and test sets
     X_real_tr,X_real_te,X_syn_tr,X_syn_te = preprocess_eval(real_df,syn_df)
-    #directory for saving preprocessed data
-    save_path = path + '/processed' + '/preprocessed_eval' + f'/{model}' + f'/{version}'
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
 
-    #save data as pickle objects
-    data_list = [X_real_tr,X_real_te,X_syn_tr,X_syn_te]
-    files = ['X_real_tr','X_real_te','X_syn_tr','X_syn_te']
+    # #directory for saving preprocessed data
+    # save_path = path + '/processed' + '/preprocessed_eval' + f'/{model}' + f'/{version}'
+    # if not os.path.exists(save_path):
+    #     os.makedirs(save_path)
+
+    # #save data as pickle objects
+    # data_list = [X_real_tr,X_real_te,X_syn_tr,X_syn_te]
+    # files = ['X_real_tr','X_real_te','X_syn_tr','X_syn_te']
     
-    for data,name in zip(data_list,files):
-        file_name = os.path.join(save_path,name+'.pkl')
-        with open(file_name, 'wb') as file:
-            pickle.dump(data, file)
+    # for data,name in zip(data_list,files):
+    #     file_name = os.path.join(save_path,name+'.pkl')
+    #     with open(file_name, 'wb') as file:
+    #         pickle.dump(data, file)
     
 

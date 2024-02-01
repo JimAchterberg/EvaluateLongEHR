@@ -59,7 +59,9 @@ def exec_tsne(real_df,syn_df,result_path):
     df = pd.concat([real_df,syn_df],axis=0)
     static = preprocess.get_static(df,['age','gender','deceased','race'])
     static.age = static.age.astype(float)
-    seq = preprocess.df_to_3d(df,cols=['icd_code'],padding='-1')
+    #make categories into integers to speedup DTW
+    df['icd_code'],_ = pd.factorize(df['icd_code'])
+    seq = preprocess.df_to_3d(df,cols=['icd_code'],padding=-1)
 
     # #find distance matrices
     static_distances = models.static_gower_matrix(static,cat_features=[False,True,True,True])
