@@ -163,7 +163,7 @@ def static_gower_matrix(data,cat_features=None):
 def mts_gower_matrix(data,cat_features=None):
     class Input:
         def __init__(self):
-            self.check_errors = True 
+            self.check_errors = False 
             self.type_dtw = "d"
             self.constrained_path_search = None
             self.MTS = True
@@ -173,7 +173,7 @@ def mts_gower_matrix(data,cat_features=None):
             self.visualization = False
             self.output_file = False
             self.dtw_to_kernel = False
-            self.sigma_kernel = 1
+            self.sigma_kernel = None
             self.itakura_max_slope = None
             self.sakoe_chiba_radius = None
     input_obj = Input()

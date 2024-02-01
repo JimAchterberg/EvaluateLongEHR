@@ -11,13 +11,13 @@ def get_static(data,columns,subject_idx='subject_id'):
 
 
 #get 2d timevarying data to 3d numpy array (necessary when data is multi-column)
-def df_to_3d(df,cols,subject_idx='subject_id',timestep_idx='seq_num',padding=-1,pad_to=None):
+def df_to_3d(df,cols,subject_idx='subject_id',timestep_idx='seq_num',padding='-1',pad_to=None):
     #check if we pad to prespecified number of timesteps
     if pad_to == None:
         t = max(df[timestep_idx])
     else: 
         t = pad_to
-    seq = np.full((df[subject_idx].nunique(),t,len(cols)),padding)
+    seq = np.full((df[subject_idx].nunique(),t,len(cols)),padding,dtype=object)
     for idx,(_,subject) in enumerate(df.groupby(subject_idx)[cols]):
         seq[idx,:subject.shape[0],:] = subject
     return seq

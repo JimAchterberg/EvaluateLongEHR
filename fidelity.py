@@ -61,7 +61,7 @@ def exec_tsne(real_df,syn_df,result_path):
     static.age = static.age.astype(float)
     seq = preprocess.df_to_3d(df,cols=['icd_code'],padding='-1')
 
-    #find distance matrices
+    # #find distance matrices
     static_distances = models.static_gower_matrix(static,cat_features=[False,True,True,True])
     timevarying_distances = models.mts_gower_matrix(seq)#,cat_features=[True])
 
@@ -82,7 +82,7 @@ def exec_tsne(real_df,syn_df,result_path):
     #tsne_plot.title('tSNE plot of synthetic/real samples')
     filename = 'tsne.png'
     tsne_plot.savefig(os.path.join(result_path,filename))
-    #tsne_plot.show()
+    tsne_plot.show()
 
 if __name__ == '__main__':
     #load real and synthetic data
@@ -101,14 +101,14 @@ if __name__ == '__main__':
 
     max_t = real_df.seq_num.max()
     syn_df = syn_df[syn_df.seq_num<=max_t]
-    #exec_tsne(real_df,syn_df,result_path)
-    
-    
-
-
-
     syn_df = syn_df[cols]
-    timesteps(real_df,syn_df,result_path)
-    exec_descr_stats(real_df,syn_df,result_path)
+
+    #select only k patients to test
+    #syn_df = syn_df[syn_df.subject_id.isin(np.random.choice(syn_df.subject_id.unique(),20))]
+    #real_df = real_df[real_df.subject_id.isin(np.random.choice(real_df.subject_id.unique(),20))]
+    
+    exec_tsne(real_df,syn_df,result_path)
+    #timesteps(real_df,syn_df,result_path)
+    #exec_descr_stats(real_df,syn_df,result_path)
         
     

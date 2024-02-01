@@ -80,7 +80,9 @@ def descr_stats_output():
     file = '/descr_stats_staticcategorical_final.csv'
 
     df = pd.read_csv(path+file,sep=';',index_col=0)
-    df.plot(kind='bar',width=.5,color=['blue','red','pink'])
+    
+    df.plot(figsize=(20,8),kind='bar',width=.5,color=['blue','red','pink'])
+    plt.xticks(rotation=0)
 
     plt.errorbar(-.25,df['Real']['Age/100'],yerr=.125, color='black', capsize=3)
     plt.errorbar(0,df['CPAR']['Age/100'],yerr=.135, color='black', capsize=3)
