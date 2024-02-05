@@ -89,8 +89,8 @@ def exec_tsne(real_df,syn_df,result_path):
 if __name__ == '__main__':
     #load real and synthetic data
     path = 'C:/Users/Jim/Documents/thesis_paper'
-    version = 'v0.1'
-    syn_model = 'cpar'
+    version = 'v0.0'
+    syn_model = 'dgan'
 
     load_path = path #+ '/processed' + '/generated' 
     cols = ['subject_id','seq_num','icd_code','gender','age','deceased','race']
@@ -101,15 +101,11 @@ if __name__ == '__main__':
     if not os.path.exists(result_path):
         os.makedirs(result_path)
 
-    max_t = real_df.seq_num.max()
-    syn_df = syn_df[syn_df.seq_num<=max_t]
-    syn_df = syn_df[cols]
-
     #select only k patients to test
     #syn_df = syn_df[syn_df.subject_id.isin(np.random.choice(syn_df.subject_id.unique(),20))]
     #real_df = real_df[real_df.subject_id.isin(np.random.choice(real_df.subject_id.unique(),20))]
     
-    exec_tsne(real_df,syn_df,result_path)
+    #exec_tsne(real_df,syn_df,result_path)
     #timesteps(real_df,syn_df,result_path)
     #exec_descr_stats(real_df,syn_df,result_path)
         

@@ -280,10 +280,10 @@ def mortality_prediction(data,syn_model,version,hparams,pred_model='RNN'):
 if __name__=='__main__':  
 #load real and synthetic data
     path = 'C:/Users/Jim/Documents/thesis_paper/data'
-    version = 'v0.1'
+    version = ''
     syn_model = 'cpar'
     
-    load_path = path + '/processed' + '/preprocessed_eval' + f'/{syn_model}' + f'/{version}' 
+    load_path = path + '/processed' + '/preprocessed_eval' + f'/{syn_model}' #+ f'/{version}'
     files = ['X_real_tr','X_real_te','X_syn_tr','X_syn_te']
     data = []
     for file in files:
@@ -299,12 +299,23 @@ if __name__=='__main__':
                }
     rf_params = {'N_TREES':100,
                  'MAX_DEPTH':None}
-    lr_params = {'L1':.5}
+    lr_params = {'L1':.5} 
 
-    #GoF(data=data,syn_model=syn_model,version=version,hparams=nn_params)
-    #trajectory_prediction(data=data,syn_model=syn_model,version=version,hparams=nn_params)
-    #mortality_prediction(data=data,syn_model=syn_model,version=version,pred_model='RNN',hparams=nn_params)
-    #mortality_prediction(data=data,syn_model=syn_model,version=version,pred_model='RF',hparams=rf_params)
-    #mortality_prediction(data=data,syn_model=syn_model,version=version,pred_model='LR',hparams=lr_params)
+    #select only part of data for testing
+    # def sct_part(data,fr=.02):
+    #     st,dyn = data
+    #     x = int(fr*st.shape[0]) 
+    #     st,dyn = st[:x],dyn[:x]
+    #     return [st,dyn]
+    # data[0] = sct_part(data[0])
+    # data[1] = sct_part(data[1])
+    # data[2] = sct_part(data[2])
+    # data[3] = sct_part(data[3])
+
+    GoF(data=data,syn_model=syn_model,version=version,hparams=nn_params)
+    trajectory_prediction(data=data,syn_model=syn_model,version=version,hparams=nn_params)
+    mortality_prediction(data=data,syn_model=syn_model,version=version,pred_model='RNN',hparams=nn_params)
+    mortality_prediction(data=data,syn_model=syn_model,version=version,pred_model='RF',hparams=rf_params)
+    mortality_prediction(data=data,syn_model=syn_model,version=version,pred_model='LR',hparams=lr_params)
 
     
