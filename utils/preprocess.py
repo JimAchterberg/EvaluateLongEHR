@@ -2,13 +2,31 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-
+def prepr(real_df,syn_df):
+        n_real = real_df.subject_id.nunique()
+        #pool samples for encoding
+        df = pd.concat([real_df,syn_df],axis=0)
+        #encode categoricals
+        for col in ['gender','deceased','race','icd_code']:
+            df[col],_ = pd.factorize(df[col])
+        #one hot encode
+        for col in ['race','icd_code']:
+            dummies = pd.get_dummies(df[col],prefix=col)
+            df = pd.concat([df,dummies],axis=1)
+            df = df.drop(col,axis=1)
+        #separate static and sequential
+        stat_columns = [x for x in df.columns if 'race' in x or x in ['age','gender','deceased']]
+        dyn_columns = [x for x in df.columns if 'icd_code' in x]
+        static = get_static(df,stat_columns)
+        seq = df_to_3d(df,dyn_columns,padding=0)
+        #unpool samples
+        real = [static[:n_real],seq[:n_real]]
+        syn = [static[n_real:],seq[n_real:]]
+        return real,syn
 
 #get static attribute table in which values are not repeated
 def get_static(data,columns,subject_idx='subject_id'):
     return data.groupby(subject_idx)[columns].first()
-
-
 
 #get 2d timevarying data to 3d numpy array (necessary when data is multi-column)
 def df_to_3d(df,cols,subject_idx='subject_id',timestep_idx='seq_num',padding='-1',pad_to=None):
@@ -61,7 +79,6 @@ class Scaler():
             return x*(self.max-self.min) + self.min
         
 
-    
 
 
 #normalizing function for pandas dataframe
@@ -121,7 +138,7 @@ def trajectory_input_output(x,max_t):
         seqs.append(x_seq)
         #output data is seq at t=t+1
         y.append(seq[timesteps>=t+1][:,t+1,:])
-    stat = pd.concat(stat,ignore_index=True)
+    stat = np.concatenate(stat)
     seqs = np.concatenate(seqs)
     x = [stat,seqs]
     y = np.concatenate(y)
