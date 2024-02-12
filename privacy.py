@@ -166,16 +166,7 @@ if __name__=='__main__':
                'ACTIVATION':'relu',
                'DROPOUT_RATE':.2
                }
-    #select only part of data for testing
-    # def sct_part(data,fr=.02):
-    #     st,dyn = data
-    #     x = int(fr*st.shape[0]) 
-    #     st,dyn = st[:x],dyn[:x]
-    #     return [st,dyn]
-    # data[0] = sct_part(data[0])
-    # data[1] = sct_part(data[1])
-    # data[2] = sct_part(data[2])
-    # data[3] = sct_part(data[3])
+   
     privacy_AIA(data=data,syn_model=syn_model,version=version,hparams=hparams)
     
             
