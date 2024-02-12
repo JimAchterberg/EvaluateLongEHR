@@ -415,8 +415,8 @@ if __name__=='__main__':
             gender_j = 0
             race_j = 0
             for labels in label_list:
-                f.write(f'We are at fold {s}')
-                f.write(f'Labels are {labels}')
+                f.write(f'We are at fold {s}'+'\n')
+                f.write(f'Labels are {labels}'+'\n')
                 if 'age' in labels:
                     f.write(f'Age MAPE: {mape_age[age_j]}'+'\n')
                     f.write(f'Age MAE: {mae_age[age_j]}'+'\n')
