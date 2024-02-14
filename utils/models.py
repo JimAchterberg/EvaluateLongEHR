@@ -161,12 +161,12 @@ def static_gower_matrix(data,cat_features=None):
     return gower_matrix(data,cat_features=cat_features)
 
 #get gower matrix for 3d time series of mixed datatypes
-def mts_gower_matrix(data,cat_features=None):
+def mts_gower_matrix(data):
     class Input:
         def __init__(self):
             self.check_errors = False 
             self.type_dtw = "i"
-            self.constrained_path_search = 'sakoe_chiba'
+            self.constrained_path_search = None
             self.MTS = True
             self.regular_flag = -1
             self.n_threads = -1
@@ -176,7 +176,7 @@ def mts_gower_matrix(data,cat_features=None):
             self.dtw_to_kernel = False
             self.sigma_kernel = None
             self.itakura_max_slope = None
-            self.sakoe_chiba_radius = 5
+            self.sakoe_chiba_radius = None
     input_obj = Input()
     #to see progress, we can import tqdm and use it in dtwParallel package -> @ dtw_functions.dtw_tensor_3d 
     timevarying_distance = dtw_functions.dtw_tensor_3d(data,data,input_obj)

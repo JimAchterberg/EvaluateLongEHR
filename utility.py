@@ -303,9 +303,10 @@ if __name__=='__main__':
     syn_df = pd.read_csv(path+'/cpar.csv.gz',sep=',',compression='gzip',usecols=cols)
 
     #select only part of data for testing
-    n = 100
-    real_df = real_df[real_df.subject_id.isin(np.random.choice(real_df.subject_id.unique(),size=n))]
-    syn_df = syn_df[syn_df.subject_id.isin(np.random.choice(syn_df.subject_id.unique(),size=n))]
+    #n = 100
+    #real_df = real_df[real_df.subject_id.isin(np.random.choice(real_df.subject_id.unique(),size=n))]
+    #syn_df = syn_df[syn_df.subject_id.isin(np.random.choice(syn_df.subject_id.unique(),size=n))]
+    
     #------------------------------------------------------------------------------------------
     #PREPROCESS
     #takes real and syn data and outputs encoded list of static and sequential data
@@ -369,12 +370,12 @@ if __name__=='__main__':
             plot.savefig(os.path.join(result_path,filename))
         #------------------------------------------------------------------------------------------
         #mortality 
-        nn_params = {'EPOCHS':10,
-               'BATCH_SIZE':16,
-               'HIDDEN_UNITS':[100],
-               'ACTIVATION':'relu',
-               'DROPOUT_RATE':.2
-               }
+        # nn_params = {'EPOCHS':10,
+        #        'BATCH_SIZE':16,
+        #        'HIDDEN_UNITS':[100],
+        #        'ACTIVATION':'relu',
+        #        'DROPOUT_RATE':.2
+        #        }
         rf_params = {'N_TREES':100,
                      'MAX_DEPTH':None}
         lr_params = {'L1':.5} 
@@ -388,12 +389,12 @@ if __name__=='__main__':
                 f.write(f'{pred_model} Synthetic AUC at fold {s}: {syn_auc}'+'\n')
         #------------------------------------------------------------------------------------------
         #trajectory prediction
-        nn_params = {'EPOCHS':10,
-            'BATCH_SIZE':16,
-            'HIDDEN_UNITS':[100],
-            'ACTIVATION':'relu',
-            'DROPOUT_RATE':.2
-            }
+        # nn_params = {'EPOCHS':10,
+        #     'BATCH_SIZE':16,
+        #     'HIDDEN_UNITS':[100],
+        #     'ACTIVATION':'relu',
+        #     'DROPOUT_RATE':.2
+        #     }
         real_acc,syn_acc = trajectory_prediction(data=list_,hparams=nn_params,syn_model=syn_model)
         filename = 'trajectory_pred_accuracy.txt'
         with open(os.path.join(result_path,filename),'a') as f:
@@ -402,12 +403,12 @@ if __name__=='__main__':
 
         #------------------------------------------------------------------------------------------
         #privacy AIA
-        nn_params = {'EPOCHS':10,
-            'BATCH_SIZE':16,
-            'HIDDEN_UNITS':[100],
-            'ACTIVATION':'relu',
-            'DROPOUT_RATE':.2
-            }
+        # nn_params = {'EPOCHS':10,
+        #     'BATCH_SIZE':16,
+        #     'HIDDEN_UNITS':[100],
+        #     'ACTIVATION':'relu',
+        #     'DROPOUT_RATE':.2
+        #     }
         mape_age,mae_age,acc_gender,acc_race,label_list = privacy_AIA(data=list_,syn_model=syn_model,hparams=nn_params)    
         filename = 'privacy_AIA.txt'
         with open(os.path.join(result_path,filename),'a') as f:
