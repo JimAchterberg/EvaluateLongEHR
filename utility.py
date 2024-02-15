@@ -4,6 +4,7 @@ import pickle
 import numpy as np
 from utils import preprocess,metrics,models
 import keras
+from sklearn.model_selection import StratifiedKFold
 
 
 def GoF(data,hparams,syn_model):
@@ -291,7 +292,7 @@ def privacy_AIA(data,syn_model,hparams):
             
     
 if __name__=='__main__':  
-    path = 'C:/Users/Jim/Documents/thesis_paper'
+    path = 'C:/Users/jlachterberg/Documents/data'
     syn_model = 'cpar'
     result_path = os.path.join('results',syn_model)
     if not os.path.exists(result_path):
@@ -316,10 +317,20 @@ if __name__=='__main__':
     attr = real[0].columns #necessary to check target column later
 
     #make k test splits
-    idx = np.arange(0,min(real[0].shape[0],syn[0].shape[0])) #find full data indices to select splits from
-    k = 3   #number of splits
-    test_size = .3 #test split percentage
-    test_splits = [np.random.choice(idx, size=int(test_size*real[0].shape[0]), replace=False) for _ in range(k)]
+    idx_real = np.arange(0,real[0].shape[0]) #find full data indices to select splits from
+    idx_syn = np.arange(0,syn[0].shape[0]) #find full data indices to select splits from
+    k = 10   #number of splits
+    test_size = 1/k #test split percentage
+    real_deceased_ratio = real[0]['deceased'].sum()/real[0].shape[0]
+    syn_deceased_ratio = syn[0]['deceased'].sum()/syn[0].shape[0]
+
+    #per fold: randomly select deceased ratio amount of deceased indices and 1-dcs ratio amount of non-deceased indices and attach to get stratified folds
+    test_split_real_deceased = [np.random.choice(idx_real[real[0]['deceased']==1],size=int((test_size*real[0].shape[0])*real_deceased_ratio),replace=False) for _ in range(k)]
+    test_split_real = [np.random.choice(idx_real[real[0]['deceased']==0],size=int((test_size*real[0].shape[0])*(1-real_deceased_ratio)),replace=False) for _ in range(k)]
+    test_split_syn_deceased = [np.random.choice(idx_syn[syn[0]['deceased']==1],size=int((test_size*syn[0].shape[0])*syn_deceased_ratio),replace=False) for _ in range(k)]
+    test_split_syn = [np.random.choice(idx_syn[syn[0]['deceased']==0],size=int((test_size*syn[0].shape[0])*(1-syn_deceased_ratio)),replace=False) for _ in range(k)]
+    test_split_real = [np.concatenate((arr_A, arr_B)) for arr_A, arr_B in zip(test_split_real, test_split_real_deceased)]
+    test_split_syn = [np.concatenate((arr_A, arr_B)) for arr_A, arr_B in zip(test_split_syn, test_split_syn_deceased)]
 
     #------------------------------------------------------------------------------------------
     #LOOP OVER TRAIN TEST SPLITS
@@ -336,14 +347,16 @@ if __name__=='__main__':
     filename = 'privacy_AIA.txt'
     with open(os.path.join(result_path,filename),'w') as f:
         pass
-    s=0 #indicates at which split we are
-    for te in test_splits:
-        tr = np.setdiff1d(idx,te)
+    
+    for s,(te_real,te_syn) in enumerate(zip(test_split_real,test_split_syn)):
+        tr_real = np.setdiff1d(idx_real,te_real)
+        tr_syn = np.setdiff1d(idx_syn,te_syn)
         #select train test data and scale numericals per dataset to avoid information leakage
         age_scaler = preprocess.Scaler()
-        age_scaler.transform(real[0].loc[te]['age']) #save for later reverse transformation on test data
+        age_scaler.transform(real[0].loc[te_real]['age']) #save for later reverse transformation on test data
         list_ = []
-        for data in [real,syn]:
+        for data,splits in zip([real,syn],[[tr_real,te_real],[tr_syn,te_syn]]):
+            tr,te = splits 
             for i in [tr,te]:
                 stat = data[0].loc[i]
                 stat['age'] = preprocess.Scaler().transform(stat['age'])
@@ -351,11 +364,12 @@ if __name__=='__main__':
                 seq = data[1][i]
                 seq = seq.astype(float)
                 list_.append([stat,seq])
+            
         #------------------------------------------------------------------------------------------
         #GoF
-        nn_params = {'EPOCHS':10,
-               'BATCH_SIZE':16,
-               'HIDDEN_UNITS':[100],
+        nn_params = {'EPOCHS':1,
+               'BATCH_SIZE':128,
+               'HIDDEN_UNITS':[1],
                'ACTIVATION':'relu',
                'DROPOUT_RATE':.2
                }
@@ -379,8 +393,8 @@ if __name__=='__main__':
         rf_params = {'N_TREES':100,
                      'MAX_DEPTH':None}
         lr_params = {'L1':.5} 
-        for pred_model in zip(['RNN','RF','LR'],[nn_params,rf_params,lr_params]):
-            real_acc,real_auc,syn_acc,syn_auc = mortality_prediction(data=list_,syn_model=syn_model,hparams=nn_params,pred_model=pred_model)
+        for pred_model,params in zip(['RNN','RF','LR'],[nn_params,rf_params,lr_params]):
+            real_acc,real_auc,syn_acc,syn_auc = mortality_prediction(data=list_,syn_model=syn_model,hparams=params,pred_model=pred_model)
             filename = 'mortality_pred_accuracy.txt'
             with open(os.path.join(result_path,filename),'a') as f:
                 f.write(f'{pred_model} Real accuracy at fold {s}: {real_acc}'+'\n')
@@ -403,12 +417,12 @@ if __name__=='__main__':
 
         #------------------------------------------------------------------------------------------
         #privacy AIA
-        # nn_params = {'EPOCHS':10,
-        #     'BATCH_SIZE':16,
-        #     'HIDDEN_UNITS':[100],
-        #     'ACTIVATION':'relu',
-        #     'DROPOUT_RATE':.2
-        #     }
+        nn_params = {'EPOCHS':10,
+            'BATCH_SIZE':16,
+            'HIDDEN_UNITS':[100],
+            'ACTIVATION':'relu',
+            'DROPOUT_RATE':.2
+            }
         mape_age,mae_age,acc_gender,acc_race,label_list = privacy_AIA(data=list_,syn_model=syn_model,hparams=nn_params)    
         filename = 'privacy_AIA.txt'
         with open(os.path.join(result_path,filename),'a') as f:
@@ -428,12 +442,3 @@ if __name__=='__main__':
                 if sum(x.count('race') for x in labels)>0:
                     f.write(f'Race accuracy: {acc_race[race_j]}'+'\n')
                     race_j+=1
-        s+=1
-
-
-    
-    
-
-   
-
-    
