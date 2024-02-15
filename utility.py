@@ -373,7 +373,7 @@ if __name__=='__main__':
                'ACTIVATION':'relu',
                'DROPOUT_RATE':.2
                }
-        acc,pval,plot = GoF(data=list_,hparams=nn_params,syn_model='cpar')
+        acc,pval,plot = GoF(data=list_,hparams=nn_params,syn_model=syn_model)
         filename = 'gof_test_report.txt'
         with open(os.path.join(result_path,filename),'a') as f:
             f.write(f'accuracy at fold {s}: {str(acc)}'+'\n')
@@ -390,7 +390,7 @@ if __name__=='__main__':
         #        'ACTIVATION':'relu',
         #        'DROPOUT_RATE':.2
         #        }
-        rf_params = {'N_TREES':100,
+        rf_params = {'N_TREES':150,
                      'MAX_DEPTH':None}
         lr_params = {'L1':.5} 
         for pred_model,params in zip(['RNN','RF','LR'],[nn_params,rf_params,lr_params]):
@@ -417,12 +417,12 @@ if __name__=='__main__':
 
         #------------------------------------------------------------------------------------------
         #privacy AIA
-        nn_params = {'EPOCHS':10,
-            'BATCH_SIZE':16,
-            'HIDDEN_UNITS':[100],
-            'ACTIVATION':'relu',
-            'DROPOUT_RATE':.2
-            }
+        # nn_params = {'EPOCHS':10,
+        #     'BATCH_SIZE':16,
+        #     'HIDDEN_UNITS':[100],
+        #     'ACTIVATION':'relu',
+        #     'DROPOUT_RATE':.2
+        #     }
         mape_age,mae_age,acc_gender,acc_race,label_list = privacy_AIA(data=list_,syn_model=syn_model,hparams=nn_params)    
         filename = 'privacy_AIA.txt'
         with open(os.path.join(result_path,filename),'a') as f:
