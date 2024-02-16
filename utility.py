@@ -4,7 +4,6 @@ import pickle
 import numpy as np
 from utils import preprocess,metrics,models
 import keras
-from sklearn.model_selection import StratifiedKFold
 
 
 def GoF(data,hparams,syn_model):
@@ -62,17 +61,18 @@ def mortality_prediction(data,syn_model,hparams,pred_model='RNN'):
     #get input/output data
     target = 'deceased'
     target = attr.get_loc(target)
-    x0 = []
+    x = []
     y = []
-    for data in [X_real_tr[0],X_real_te[0],X_syn_tr[0],X_syn_te[0]]:
-        y.append(data[:,target])
-        x0.append(np.delete(data,target,axis=1))
-    X_real_tr[0],X_real_te[0],X_syn_tr[0],X_syn_te[0] = x0
+    for data in [X_real_tr,X_real_te,X_syn_tr,X_syn_te]:
+        y.append(data[0][:,target])
+        x0 = np.delete(data[0],target,axis=1)   
+        x.append([x0,data[1]])
+    x_real_tr,x_real_te,x_syn_tr,x_syn_te = x
     y_real_tr,y_real_te,y_syn_tr,y_syn_te = y
     
     if pred_model=='RNN':
         model_list = []
-        for data,name in zip([[X_real_tr,y_real_tr],[X_syn_tr,y_syn_tr]],['real','syn']):
+        for data,name in zip([[x_real_tr,y_real_tr],[x_syn_tr,y_syn_tr]],['real','syn']):
             X_tr,y_tr = data 
             checkpoint_filepath=model_path + f'/mortality_{pred_model}_{name}'+'.keras'
             model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
@@ -98,13 +98,13 @@ def mortality_prediction(data,syn_model,hparams,pred_model='RNN'):
         real_model,syn_model = model_list
     else:
         x = []
-        for data in [X_real_tr,X_real_te,X_syn_tr,X_syn_te]:
+        for data in [x_real_tr,x_real_te,x_syn_tr,x_syn_te]:
              x0,x1 = data 
              x1 = np.sum(x1,axis=1)
              x.append(np.concatenate((x0,x1),axis=1))
-        X_real_tr,X_real_te,X_syn_tr,X_syn_te = x
+        x_real_tr,x_real_te,x_syn_tr,x_syn_te = x
         model_list = []
-        for data,name in zip([[X_real_tr,y_real_tr],[X_syn_tr,y_syn_tr]],['real','syn']):
+        for data,name in zip([[x_real_tr,y_real_tr],[x_syn_tr,y_syn_tr]],['real','syn']):
             X_tr,y_tr = data
             checkpoint_filepath=model_path + f'/mortality_{pred_model}_{name}'+'.pkl'
             if pred_model=='LR':
@@ -117,8 +117,8 @@ def mortality_prediction(data,syn_model,hparams,pred_model='RNN'):
             model_list.append(model)
         real_model,syn_model = model_list
     #make predictions
-    real_preds = real_model.predict(X_real_te)
-    syn_preds = syn_model.predict(X_real_te)
+    real_preds = real_model.predict(x_real_te)
+    syn_preds = syn_model.predict(x_real_te)
     real_acc = metrics.accuracy(y_real_te,np.round(real_preds))
     syn_acc = metrics.accuracy(y_real_te,np.round(syn_preds))
     real_auc = metrics.auc(y_real_te,real_preds)
@@ -244,13 +244,13 @@ def privacy_AIA(data,syn_model,hparams):
         for d in [y_real_tr,y_real_te,y_syn_tr,y_syn_te]:
             output_list = []
             for label in [x for x in labels if 'race' not in x]:
-                target = labels.index(label)
-                output_list.append(d[:,target])
+                t = labels.index(label)
+                output_list.append(d[:,t])
             if sum(x.count('race') for x in labels)>0:
-                targets=[]
+                t=[]
                 for l in [x for x in labels if 'race' in x]:
-                    targets.append([i for i,x in enumerate(labels) if x==l])
-                output_list.append(d[:,targets])
+                    t.append([i for i,x in enumerate(labels) if x==l])
+                output_list.append(d[:,t])
             y_list.append(output_list)
         y_real_tr,y_real_te,y_syn_tr,y_syn_te = y_list
         
@@ -323,8 +323,8 @@ if __name__=='__main__':
     test_size = 1/k #test split percentage
     real_deceased_ratio = real[0]['deceased'].sum()/real[0].shape[0]
     syn_deceased_ratio = syn[0]['deceased'].sum()/syn[0].shape[0]
-
     #per fold: randomly select deceased ratio amount of deceased indices and 1-dcs ratio amount of non-deceased indices and attach to get stratified folds
+    np.random.seed(0)
     test_split_real_deceased = [np.random.choice(idx_real[real[0]['deceased']==1],size=int((test_size*real[0].shape[0])*real_deceased_ratio),replace=False) for _ in range(k)]
     test_split_real = [np.random.choice(idx_real[real[0]['deceased']==0],size=int((test_size*real[0].shape[0])*(1-real_deceased_ratio)),replace=False) for _ in range(k)]
     test_split_syn_deceased = [np.random.choice(idx_syn[syn[0]['deceased']==1],size=int((test_size*syn[0].shape[0])*syn_deceased_ratio),replace=False) for _ in range(k)]
@@ -368,7 +368,7 @@ if __name__=='__main__':
         #------------------------------------------------------------------------------------------
         #GoF
         nn_params = {'EPOCHS':1,
-               'BATCH_SIZE':128,
+               'BATCH_SIZE':256,
                'HIDDEN_UNITS':[1],
                'ACTIVATION':'relu',
                'DROPOUT_RATE':.2
@@ -382,8 +382,8 @@ if __name__=='__main__':
         if (s%2)==0:
             filename = f'gof_plot_{s}.png'
             plot.savefig(os.path.join(result_path,filename))
-        #------------------------------------------------------------------------------------------
-        #mortality 
+        # #------------------------------------------------------------------------------------------
+        # #mortality 
         # nn_params = {'EPOCHS':10,
         #        'BATCH_SIZE':16,
         #        'HIDDEN_UNITS':[100],
@@ -401,8 +401,8 @@ if __name__=='__main__':
                 f.write(f'{pred_model} Synthetic accuracy at fold {s}: {syn_acc}'+'\n')
                 f.write(f'{pred_model} Real AUC at fold {s}: {real_auc}'+'\n')
                 f.write(f'{pred_model} Synthetic AUC at fold {s}: {syn_auc}'+'\n')
-        #------------------------------------------------------------------------------------------
-        #trajectory prediction
+        # #------------------------------------------------------------------------------------------
+        # #trajectory prediction
         # nn_params = {'EPOCHS':10,
         #     'BATCH_SIZE':16,
         #     'HIDDEN_UNITS':[100],
