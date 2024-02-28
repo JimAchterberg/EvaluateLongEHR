@@ -78,7 +78,7 @@ def mortality_prediction(data,syn_model,hparams,pred_model='RNN'):
             model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
             filepath=checkpoint_filepath,
             save_weights_only=True,
-            monitor='val_accuracy',
+            monitor='val_auc',
             mode='max',
             save_best_only=True)
             config = {'input_shape_attr':(X_tr[0].shape[1],),
@@ -88,8 +88,13 @@ def mortality_prediction(data,syn_model,hparams,pred_model='RNN'):
                   'dropout_rate':hparams['DROPOUT_RATE'],
                   'activation':hparams['ACTIVATION']
                   }
+            #model = models.mortality_RNN(config=config)
             model = models.mortality_RNN_simple(config=config)
-            model.compile(optimizer='Adam',loss='binary_crossentropy',metrics='accuracy')
+            auc = keras.metrics.AUC(name='auc')
+            import tensorflow as tf
+            opt = tf.optimizers.Adam(learning_rate=0.001)
+            loss = tf.losses.BinaryCrossentropy()
+            model.compile(optimizer=opt,loss=loss,metrics=auc)
             model.fit(X_tr,y_tr,batch_size=hparams['BATCH_SIZE'],epochs=hparams['EPOCHS'],
                       validation_split=.2,callbacks=[model_checkpoint_callback])
             #choose the best version and load its weights for real and synthetic model
@@ -304,9 +309,9 @@ if __name__=='__main__':
     syn_df = pd.read_csv(path+'/cpar.csv.gz',sep=',',compression='gzip',usecols=cols)
 
     #select only part of data for testing
-    #n = 100
-    #real_df = real_df[real_df.subject_id.isin(np.random.choice(real_df.subject_id.unique(),size=n))]
-    #syn_df = syn_df[syn_df.subject_id.isin(np.random.choice(syn_df.subject_id.unique(),size=n))]
+    # n = 1000
+    # real_df = real_df[real_df.subject_id.isin(np.random.choice(real_df.subject_id.unique(),size=n))]
+    # syn_df = syn_df[syn_df.subject_id.isin(np.random.choice(syn_df.subject_id.unique(),size=n))]
     
     #------------------------------------------------------------------------------------------
     #PREPROCESS
@@ -347,7 +352,14 @@ if __name__=='__main__':
     filename = 'privacy_AIA.txt'
     with open(os.path.join(result_path,filename),'w') as f:
         pass
-    
+
+    syn_auc_list_rnn = []
+    real_auc_list_rnn = []
+    syn_auc_list_rf = []
+    real_auc_list_rf = []
+    syn_auc_list_lr = []
+    real_auc_list_lr = []
+
     for s,(te_real,te_syn) in enumerate(zip(test_split_real,test_split_syn)):
         tr_real = np.setdiff1d(idx_real,te_real)
         tr_syn = np.setdiff1d(idx_syn,te_syn)
@@ -367,40 +379,51 @@ if __name__=='__main__':
             
         #------------------------------------------------------------------------------------------
         #GoF
-        nn_params = {'EPOCHS':1,
-               'BATCH_SIZE':256,
-               'HIDDEN_UNITS':[1],
-               'ACTIVATION':'relu',
-               'DROPOUT_RATE':.2
-               }
-        acc,pval,plot = GoF(data=list_,hparams=nn_params,syn_model=syn_model)
-        filename = 'gof_test_report.txt'
-        with open(os.path.join(result_path,filename),'a') as f:
-            f.write(f'accuracy at fold {s}: {str(acc)}'+'\n')
-            f.write(f'pval at fold {s}: {str(pval)}'+'\n')
-        #save plot only at even numbers
-        if (s%2)==0:
-            filename = f'gof_plot_{s}.png'
-            plot.savefig(os.path.join(result_path,filename))
-        # #------------------------------------------------------------------------------------------
-        # #mortality 
-        # nn_params = {'EPOCHS':10,
-        #        'BATCH_SIZE':16,
-        #        'HIDDEN_UNITS':[100],
+        # nn_params = {'EPOCHS':1,
+        #        'BATCH_SIZE':256,
+        #        'HIDDEN_UNITS':[1],
         #        'ACTIVATION':'relu',
         #        'DROPOUT_RATE':.2
         #        }
-        rf_params = {'N_TREES':150,
+        # acc,pval,plot = GoF(data=list_,hparams=nn_params,syn_model=syn_model)
+        # filename = 'gof_test_report.txt'
+        # with open(os.path.join(result_path,filename),'a') as f:
+        #     f.write(f'accuracy at fold {s}: {str(acc)}'+'\n')
+        #     f.write(f'pval at fold {s}: {str(pval)}'+'\n')
+        # #save plot only at even numbers
+        # if (s%2)==0:
+        #     filename = f'gof_plot_{s}.png'
+        #     plot.savefig(os.path.join(result_path,filename))
+        # #------------------------------------------------------------------------------------------
+        # #mortality 
+        nn_params = {'EPOCHS':100,
+               'BATCH_SIZE':128,
+               'HIDDEN_UNITS':[],
+               'ACTIVATION':'relu',
+               'DROPOUT_RATE':.1
+               }
+        rf_params = {'N_TREES':50,
                      'MAX_DEPTH':None}
         lr_params = {'L1':.5} 
-        for pred_model,params in zip(['RNN','RF','LR'],[nn_params,rf_params,lr_params]):
-            real_acc,real_auc,syn_acc,syn_auc = mortality_prediction(data=list_,syn_model=syn_model,hparams=params,pred_model=pred_model)
-            filename = 'mortality_pred_accuracy.txt'
-            with open(os.path.join(result_path,filename),'a') as f:
-                f.write(f'{pred_model} Real accuracy at fold {s}: {real_acc}'+'\n')
-                f.write(f'{pred_model} Synthetic accuracy at fold {s}: {syn_acc}'+'\n')
-                f.write(f'{pred_model} Real AUC at fold {s}: {real_auc}'+'\n')
-                f.write(f'{pred_model} Synthetic AUC at fold {s}: {syn_auc}'+'\n')
+        real_acc,real_auc,syn_acc,syn_auc = mortality_prediction(data=list_,syn_model=syn_model,hparams=nn_params,pred_model='RNN')
+        real_auc_list_rnn.append(real_auc)
+        syn_auc_list_rnn.append(syn_auc)
+        filename = 'mortality_pred_accuracy.txt'
+        with open(os.path.join(result_path,filename),'a') as f:
+            f.write(f'Fold: {s} running average real AUC (RNN): {sum(real_auc_list_rnn)/len(real_auc_list_rnn)}' + '\n')
+            f.write(f'Fold: {s} running average synthetic AUC (RNN): {sum(syn_auc_list_rnn)/len(syn_auc_list_rnn)}' + '\n')
+        real_acc,real_auc,syn_acc,syn_auc = mortality_prediction(data=list_,syn_model=syn_model,hparams=rf_params,pred_model='RF')
+        real_auc_list_rf.append(real_auc)
+        syn_auc_list_rf.append(syn_auc)
+        with open(os.path.join(result_path,filename),'a') as f:
+            f.write(f'Fold: {s} running average real AUC (RF): {sum(real_auc_list_rf)/len(real_auc_list_rf)}' + '\n')
+            f.write(f'Fold: {s} running average synthetic AUC (RF): {sum(syn_auc_list_rf)/len(syn_auc_list_rf)}' + '\n')
+        real_acc,real_auc,syn_acc,syn_auc = mortality_prediction(data=list_,syn_model=syn_model,hparams=lr_params,pred_model='LR')
+        real_auc_list_lr.append(real_auc)
+        syn_auc_list_lr.append(syn_auc)
+        with open(os.path.join(result_path,filename),'a') as f:
+            f.write(f'Fold: {s} running average real AUC (LR): {sum(real_auc_list_lr)/len(real_auc_list_lr)}' + '\n')
+            f.write(f'Fold: {s} running average synthetic AUC (LR): {sum(syn_auc_list_lr)/len(syn_auc_list_lr)}' + '\n')
         # #------------------------------------------------------------------------------------------
         # #trajectory prediction
         # nn_params = {'EPOCHS':10,
@@ -409,11 +432,11 @@ if __name__=='__main__':
         #     'ACTIVATION':'relu',
         #     'DROPOUT_RATE':.2
         #     }
-        real_acc,syn_acc = trajectory_prediction(data=list_,hparams=nn_params,syn_model=syn_model)
-        filename = 'trajectory_pred_accuracy.txt'
-        with open(os.path.join(result_path,filename),'a') as f:
-            f.write(f'Real accuracy at fold {s}: {real_acc}'+'\n')
-            f.write(f'Synthetic accuracy at fold {s}: {syn_acc}'+'\n')
+        # real_acc,syn_acc = trajectory_prediction(data=list_,hparams=nn_params,syn_model=syn_model)
+        # filename = 'trajectory_pred_accuracy.txt'
+        # with open(os.path.join(result_path,filename),'a') as f:
+        #     f.write(f'Real accuracy at fold {s}: {real_acc}'+'\n')
+        #     f.write(f'Synthetic accuracy at fold {s}: {syn_acc}'+'\n')
 
         #------------------------------------------------------------------------------------------
         #privacy AIA
@@ -423,22 +446,22 @@ if __name__=='__main__':
         #     'ACTIVATION':'relu',
         #     'DROPOUT_RATE':.2
         #     }
-        mape_age,mae_age,acc_gender,acc_race,label_list = privacy_AIA(data=list_,syn_model=syn_model,hparams=nn_params)    
-        filename = 'privacy_AIA.txt'
-        with open(os.path.join(result_path,filename),'a') as f:
-            age_j = 0
-            gender_j = 0
-            race_j = 0
-            for labels in label_list:
-                f.write(f'We are at fold {s}'+'\n')
-                f.write(f'Labels are {labels}'+'\n')
-                if 'age' in labels:
-                    f.write(f'Age MAPE: {mape_age[age_j]}'+'\n')
-                    f.write(f'Age MAE: {mae_age[age_j]}'+'\n')
-                    age_j+=1
-                if 'gender' in labels:
-                    f.write(f'Gender accuracy: {acc_gender[gender_j]}'+'\n')
-                    gender_j+=1
-                if sum(x.count('race') for x in labels)>0:
-                    f.write(f'Race accuracy: {acc_race[race_j]}'+'\n')
-                    race_j+=1
+        # mape_age,mae_age,acc_gender,acc_race,label_list = privacy_AIA(data=list_,syn_model=syn_model,hparams=nn_params)    
+        # filename = 'privacy_AIA.txt'
+        # with open(os.path.join(result_path,filename),'a') as f:
+        #     age_j = 0
+        #     gender_j = 0
+        #     race_j = 0
+        #     for labels in label_list:
+        #         f.write(f'We are at fold {s}'+'\n')
+        #         f.write(f'Labels are {labels}'+'\n')
+        #         if 'age' in labels:
+        #             f.write(f'Age MAPE: {mape_age[age_j]}'+'\n')
+        #             f.write(f'Age MAE: {mae_age[age_j]}'+'\n')
+        #             age_j+=1
+        #         if 'gender' in labels:
+        #             f.write(f'Gender accuracy: {acc_gender[gender_j]}'+'\n')
+        #             gender_j+=1
+        #         if sum(x.count('race') for x in labels)>0:
+        #             f.write(f'Race accuracy: {acc_race[race_j]}'+'\n')
+        #             race_j+=1

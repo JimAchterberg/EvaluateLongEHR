@@ -50,7 +50,7 @@ def freq_matrix_plot(rel_freq,range=None):
         vmin = vmax = None
     plt.figure(figsize=(10, 6))
     sns.heatmap(rel_freq, annot=False, cmap='rocket_r', fmt=".2f", vmin=vmin, vmax=vmax)
-    plt.xlabel('Timestep')
+    plt.xlabel('Step')
     plt.ylabel('Category')
     #plt.xticks(ticks=np.arange(1,data[timestep_idx].max()+1,1),labels=data[timestep_idx].unique())
     #plt.yticks(ticks=np.arange(0,data[columns].max(),1),labels=np.sort(data[columns].unique()))

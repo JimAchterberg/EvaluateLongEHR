@@ -61,7 +61,7 @@ class trajectory_RNN_simple(keras.Model):
         return self.model(inputs)
       
 
-class mortality_RNN_simple(keras.Model):
+class mortality_RNN(keras.Model):
     def __init__(self,config):
         super().__init__()
         self.build_model(config)
@@ -80,6 +80,32 @@ class mortality_RNN_simple(keras.Model):
             x = layers.Dense(units,activation=config['activation'])(x)
         output_layer = layers.Dense(1,activation='sigmoid')(x)
         
+        self.model = keras.Model(inputs=[input_attr,input_feat],outputs=output_layer)
+
+    def call(self, inputs):
+        return self.model(inputs)
+    
+class mortality_RNN_simple(keras.Model):
+    def __init__(self,config):
+        super().__init__()
+        self.build_model(config)
+
+    def build_model(self,config):
+        input_attr = layers.Input(shape=config['input_shape_attr'])
+        input_feat = layers.Input(shape=config['input_shape_feat'])
+        #separate processing layers
+        x_attr = layers.Dense(5,activation=config['activation'])(input_attr) #9 input variables 
+        
+        x_feat = layers.Bidirectional(layers.LSTM(10,activation=config['activation']))(input_feat) #14 input variables
+        x_feat_ex = layers.Dense(5,activation=config['activation'])(x_feat)
+
+        stacked = layers.LSTM(10,activation=config['activation'],return_sequences=True)(input_feat)
+        stacked = layers.LSTM(5,activation=config['activation'])(stacked)
+        stacked_ex = layers.Dense(3,activation=config['activation'])(stacked)
+        
+        #x_feat = layers.Dropout(.25)(x_feat)
+        x = layers.Concatenate(axis=1)([input_attr,x_attr,x_feat])
+        output_layer = layers.Dense(1,activation='sigmoid')(x)
         self.model = keras.Model(inputs=[input_attr,input_feat],outputs=output_layer)
 
     def call(self, inputs):
@@ -149,7 +175,7 @@ class privacy_RNN(keras.Model):
 def tsne(distance_matrix,labels):
     embeddings = TSNE(n_components=2,init='random',metric='precomputed').fit_transform(distance_matrix)
     plt.figure(figsize=(10, 6))
-    plt.scatter(embeddings[:,0],embeddings[:,1],c=labels,cmap='bwr')
+    plt.scatter(embeddings[:,0],embeddings[:,1],c=labels,cmap='bwr',alpha=.5)
     handles=[plt.Line2D([0], [0], marker='o', color='w', 
                     markerfacecolor='blue', label='Real'),plt.Line2D([0], [0], marker='o', color='w', 
                     markerfacecolor='red', label='Synthetic')]

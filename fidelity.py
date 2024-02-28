@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np 
 import os
 from utils import preprocess,metrics,models
-
+import pickle
 #executes the descriptive statistics step
 def exec_descr_stats(real_df,syn_df,result_path):
     #get static feature dataframes
@@ -75,7 +75,8 @@ def exec_tsne(real_df,syn_df,result_path):
     distance_matrix = ((len(static.columns))/len(df.columns))*static_distances + \
         (seq.shape[2]/len(df.columns))*timevarying_distances
     filename = 'distance_matrix.csv'
-    pd.DataFrame(distance_matrix).to_csv(os.path.join(result_path,filename))
+    with open(os.path.join(result_path,filename),'wb') as f:
+        pickle.dump(distance_matrix,f)
 
     # #compute and plot tsne projections with synthetic/real labels as colors
     labels = np.concatenate((np.zeros(real_df.subject_id.nunique()),
