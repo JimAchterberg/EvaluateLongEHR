@@ -198,7 +198,7 @@ def privacy_AIA(data,syn_model,hparams):
         #ensure we are taking the one hot encoded columns
         if 'race' in labels:
             labels.remove('race')
-            labels = labels + [x for x in attr if 'race' in x] 
+            labels.extend([x for x in attr if 'race' in x]) 
         #find target indices to select 
         targets = attr.get_indexer(labels)
 
@@ -298,7 +298,7 @@ def privacy_AIA(data,syn_model,hparams):
     
 if __name__=='__main__':  
     path = 'C:/Users/jlachterberg/Documents/data'
-    syn_model = 'cpar'
+    syn_model = 'dgan'
     result_path = os.path.join('results',syn_model)
     if not os.path.exists(result_path):
         os.makedirs(result_path)
@@ -379,9 +379,9 @@ if __name__=='__main__':
             
         #------------------------------------------------------------------------------------------
         #GoF
-        # nn_params = {'EPOCHS':1,
+        # nn_params = {'EPOCHS':100,
         #        'BATCH_SIZE':256,
-        #        'HIDDEN_UNITS':[1],
+        #        'HIDDEN_UNITS':[100,100],
         #        'ACTIVATION':'relu',
         #        'DROPOUT_RATE':.2
         #        }
@@ -394,57 +394,59 @@ if __name__=='__main__':
         # if (s%2)==0:
         #     filename = f'gof_plot_{s}.png'
         #     plot.savefig(os.path.join(result_path,filename))
+        #     plot.clf()
+        
         # #------------------------------------------------------------------------------------------
-        # #mortality 
-        nn_params = {'EPOCHS':100,
-               'BATCH_SIZE':128,
-               'HIDDEN_UNITS':[],
-               'ACTIVATION':'relu',
-               'DROPOUT_RATE':.1
-               }
-        rf_params = {'N_TREES':50,
-                     'MAX_DEPTH':None}
-        lr_params = {'L1':.5} 
-        real_acc,real_auc,syn_acc,syn_auc = mortality_prediction(data=list_,syn_model=syn_model,hparams=nn_params,pred_model='RNN')
-        real_auc_list_rnn.append(real_auc)
-        syn_auc_list_rnn.append(syn_auc)
-        filename = 'mortality_pred_accuracy.txt'
-        with open(os.path.join(result_path,filename),'a') as f:
-            f.write(f'Fold: {s} running average real AUC (RNN): {sum(real_auc_list_rnn)/len(real_auc_list_rnn)}' + '\n')
-            f.write(f'Fold: {s} running average synthetic AUC (RNN): {sum(syn_auc_list_rnn)/len(syn_auc_list_rnn)}' + '\n')
-        real_acc,real_auc,syn_acc,syn_auc = mortality_prediction(data=list_,syn_model=syn_model,hparams=rf_params,pred_model='RF')
-        real_auc_list_rf.append(real_auc)
-        syn_auc_list_rf.append(syn_auc)
-        with open(os.path.join(result_path,filename),'a') as f:
-            f.write(f'Fold: {s} running average real AUC (RF): {sum(real_auc_list_rf)/len(real_auc_list_rf)}' + '\n')
-            f.write(f'Fold: {s} running average synthetic AUC (RF): {sum(syn_auc_list_rf)/len(syn_auc_list_rf)}' + '\n')
-        real_acc,real_auc,syn_acc,syn_auc = mortality_prediction(data=list_,syn_model=syn_model,hparams=lr_params,pred_model='LR')
-        real_auc_list_lr.append(real_auc)
-        syn_auc_list_lr.append(syn_auc)
-        with open(os.path.join(result_path,filename),'a') as f:
-            f.write(f'Fold: {s} running average real AUC (LR): {sum(real_auc_list_lr)/len(real_auc_list_lr)}' + '\n')
-            f.write(f'Fold: {s} running average synthetic AUC (LR): {sum(syn_auc_list_lr)/len(syn_auc_list_lr)}' + '\n')
-        # #------------------------------------------------------------------------------------------
-        # #trajectory prediction
-        # nn_params = {'EPOCHS':10,
-        #     'BATCH_SIZE':16,
-        #     'HIDDEN_UNITS':[100],
-        #     'ACTIVATION':'relu',
-        #     'DROPOUT_RATE':.2
-        #     }
-        # real_acc,syn_acc = trajectory_prediction(data=list_,hparams=nn_params,syn_model=syn_model)
-        # filename = 'trajectory_pred_accuracy.txt'
+        #mortality 
+        # nn_params = {'EPOCHS':100,
+        #        'BATCH_SIZE':256,
+        #        'HIDDEN_UNITS':[100,100],
+        #        'ACTIVATION':'relu',
+        #        'DROPOUT_RATE':.2
+        #        }
+        # rf_params = {'N_TREES':150,
+        #              'MAX_DEPTH':None}
+        # lr_params = {'L1':.5} 
+        # real_acc,real_auc,syn_acc,syn_auc = mortality_prediction(data=list_,syn_model=syn_model,hparams=nn_params,pred_model='RNN')
+        # real_auc_list_rnn.append(real_auc)
+        # syn_auc_list_rnn.append(syn_auc)
+        # filename = 'mortality_pred_accuracy.txt'
         # with open(os.path.join(result_path,filename),'a') as f:
-        #     f.write(f'Real accuracy at fold {s}: {real_acc}'+'\n')
-        #     f.write(f'Synthetic accuracy at fold {s}: {syn_acc}'+'\n')
+        #     f.write(f'Fold: {s} running average real AUC (RNN): {sum(real_auc_list_rnn)/len(real_auc_list_rnn)}' + '\n')
+        #     f.write(f'Fold: {s} running average synthetic AUC (RNN): {sum(syn_auc_list_rnn)/len(syn_auc_list_rnn)}' + '\n')
+        # real_acc,real_auc,syn_acc,syn_auc = mortality_prediction(data=list_,syn_model=syn_model,hparams=rf_params,pred_model='RF')
+        # real_auc_list_rf.append(real_auc)
+        # syn_auc_list_rf.append(syn_auc)
+        # with open(os.path.join(result_path,filename),'a') as f:
+        #     f.write(f'Fold: {s} running average real AUC (RF): {sum(real_auc_list_rf)/len(real_auc_list_rf)}' + '\n')
+        #     f.write(f'Fold: {s} running average synthetic AUC (RF): {sum(syn_auc_list_rf)/len(syn_auc_list_rf)}' + '\n')
+        # real_acc,real_auc,syn_acc,syn_auc = mortality_prediction(data=list_,syn_model=syn_model,hparams=lr_params,pred_model='LR')
+        # real_auc_list_lr.append(real_auc)
+        # syn_auc_list_lr.append(syn_auc)
+        # with open(os.path.join(result_path,filename),'a') as f:
+        #     f.write(f'Fold: {s} running average real AUC (LR): {sum(real_auc_list_lr)/len(real_auc_list_lr)}' + '\n')
+        #     f.write(f'Fold: {s} running average synthetic AUC (LR): {sum(syn_auc_list_lr)/len(syn_auc_list_lr)}' + '\n')
+        #------------------------------------------------------------------------------------------
+        #trajectory prediction
+        nn_params = {'EPOCHS':100,
+            'BATCH_SIZE':128,
+            'HIDDEN_UNITS':[100,100],
+            'ACTIVATION':'relu',
+            'DROPOUT_RATE':.2
+            }
+        real_acc,syn_acc = trajectory_prediction(data=list_,hparams=nn_params,syn_model=syn_model)
+        filename = 'trajectory_pred_accuracy.txt'
+        with open(os.path.join(result_path,filename),'a') as f:
+            f.write(f'Real accuracy at fold {s}: {real_acc}'+'\n')
+            f.write(f'Synthetic accuracy at fold {s}: {syn_acc}'+'\n')
 
         #------------------------------------------------------------------------------------------
         #privacy AIA
-        # nn_params = {'EPOCHS':10,
-        #     'BATCH_SIZE':16,
-        #     'HIDDEN_UNITS':[100],
+        # nn_params = {'EPOCHS':100,
+        #     'BATCH_SIZE':256,
+        #     'HIDDEN_UNITS':[100,100],
         #     'ACTIVATION':'relu',
-        #     'DROPOUT_RATE':.2
+        #     'DROPOUT_RATE':0.2
         #     }
         # mape_age,mae_age,acc_gender,acc_race,label_list = privacy_AIA(data=list_,syn_model=syn_model,hparams=nn_params)    
         # filename = 'privacy_AIA.txt'

@@ -31,17 +31,17 @@ def exec_descr_stats(real_df,syn_df,result_path):
     diff_freqmatrix = real_freqmatrix-syn_freqmatrix
 
     real_freqmatrix = metrics.freq_matrix_plot(real_freqmatrix,range=(0,.8))
-    real_freqmatrix.title('Real ICD section frequencies')
+    real_freqmatrix.title('Real ICD chapter frequencies')
     filename = 'real_matrixplot.png'
     real_freqmatrix.savefig(os.path.join(result_path,filename))
     
     syn_freqmatrix = metrics.freq_matrix_plot(syn_freqmatrix,range=(0,.8))
-    syn_freqmatrix.title('Synthetic ICD section frequencies')
+    syn_freqmatrix.title('Synthetic ICD chapter frequencies')
     filename = 'syn_matrixplot.png'
     syn_freqmatrix.savefig(os.path.join(result_path,filename))
 
     diff_freqmatrix = metrics.freq_matrix_plot(diff_freqmatrix,range=None)
-    diff_freqmatrix.title('Synthetic/real ICD section frequency difference')
+    diff_freqmatrix.title('Synthetic/real ICD chapter frequency difference')
     filename = 'diff_matrixplot.png'
     diff_freqmatrix.savefig(os.path.join(result_path,filename))
 
@@ -108,6 +108,6 @@ if __name__ == '__main__':
     
     #exec_tsne(real_df,syn_df,result_path)
     #timesteps(real_df,syn_df,result_path)
-    #exec_descr_stats(real_df,syn_df,result_path)
+    exec_descr_stats(real_df,syn_df,result_path)
         
     

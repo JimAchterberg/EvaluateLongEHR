@@ -59,11 +59,16 @@ def freq_matrix_plot(rel_freq,range=None):
 def GoF_kdeplot(pred,y_test):
     #df = pd.DataFrame(np.concatenate((pred,np.expand_dims(y_test,-1)),axis=1),columns=['pred','hue'])
     #df = pd.DataFrame(np.concatenate((pred[y_test==0],pred[y_test==1]),axis=1),columns=['Real','Synthetic'])
+    plt.figure(figsize=(10, 6))
     range = (0,1)
-    plt.hist(pred[y_test==0],bins='auto',label='Real',color='b',alpha=.5,range=range)
-    plt.hist(pred[y_test==1],bins='auto',label='Synthetic',color='r',alpha=.5,range=range)
+    #plt.hist(pred[y_test==0],bins='auto',label='Real',color='b',alpha=.5,range=range)
+    #plt.hist(pred[y_test==1],bins='auto',label='Synthetic',color='r',alpha=.5,range=range)
+    plt.xlim(0,1)
+    plt.ylim(0,6)
+    sns.kdeplot(pred[y_test==0],palette=['blue'],clip=range,alpha=.5,fill=True,label='Real')
+    sns.kdeplot(pred[y_test==1],palette=['red'],clip=range,alpha=.5,fill=True,label='Synthetic')
     plt.xlabel('Classification score')
-    plt.ylabel('Frequency')
+    plt.ylabel('Density')
     plt.legend()
     return plt 
 
