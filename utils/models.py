@@ -1,5 +1,3 @@
-#contains all models and (distance) algorithms
-
 import keras 
 from keras import layers
 from sklearn.linear_model import LogisticRegression
@@ -10,107 +8,84 @@ from gower import gower_matrix
 from dtwParallel import dtw_functions
 from scipy.spatial import distance
 
-#model for GoF testing
+#base RNN without output layer
+class RNN(keras.Model):
+    def __init__(self,config):
+        super().__init__()
+        self.build_model(config)
+
+    def build_model(self,config):
+        input_attr = layers.Input(shape=config['input_shape_attr'])
+        input_feat = layers.Input(shape=config['input_shape_feat'])
+        #first layer consists of separate processing layers
+        x_attr = layers.Dense(config['hidden_units'][0],activation=config['activation'])(input_attr)
+        x_feat = layers.GRU(config['hidden_units'][0],activation=config['activation'])(input_feat)
+        x = layers.Concatenate(axis=1)([x_attr,x_feat])
+        #rest is just feedforward so can be done in a loop
+        config['hidden_units'] = config['hidden_units'][1:]
+        for units in config['hidden_units']:
+            x = layers.Dropout(config['dropout_rate'])(x)
+            x = layers.Dense(units,activation=config['activation'])(x)
+        
+        self.model = keras.Model(inputs=[input_attr,input_feat],outputs=x)
+
+    def call(self, inputs):
+        return self.model(inputs)
+    
+
 class GoF_RNN(keras.Model):
     def __init__(self,config):
         super().__init__()
-        self.build_model(config)
-
-    def build_model(self,config):
-        input_attr = layers.Input(shape=config['input_shape_attr'])
-        input_feat = layers.Input(shape=config['input_shape_feat'])
-        #first layer consists of separate processing layers
-        x_attr = layers.Dense(config['hidden_units'][0],activation=config['activation'])(input_attr)
-        x_feat = layers.GRU(config['hidden_units'][0],activation=config['activation'])(input_feat)
-        x = layers.Concatenate(axis=1)([x_attr,x_feat])
-        #rest is just feedforward so can be done in a loop
-        config['hidden_units'] = config['hidden_units'][1:]
-        for units in config['hidden_units']:
-            x = layers.Dropout(config['dropout_rate'])(x)
-            x = layers.Dense(units,activation=config['activation'])(x)
-        output_layer = layers.Dense(1,activation='sigmoid')(x)
-        
-        self.model = keras.Model(inputs=[input_attr,input_feat],outputs=output_layer)
+        self.base_model = RNN(config)
+        self.output_layer = layers.Dense(1,activation='sigmoid')
 
     def call(self, inputs):
-        return self.model(inputs)
+        x = self.base_model(inputs)
+        return self.output_layer(x)
     
-class trajectory_RNN_simple(keras.Model):
-    def __init__(self,config):
-        super().__init__()
-        self.build_model(config)
-
-    def build_model(self,config):
-        input_attr = layers.Input(shape=config['input_shape_attr'])
-        input_feat = layers.Input(shape=config['input_shape_feat'])
-
-        #first layer consists of separate processing layers
-        x_attr = layers.Dense(config['hidden_units'][0],activation=config['activation'])(input_attr)
-        x_feat = layers.GRU(config['hidden_units'][0],activation=config['activation'])(input_feat)
-        x = layers.Concatenate(axis=1)([x_attr,x_feat])
-        #rest is just feedforward so can be done in a loop
-        config['hidden_units'] = config['hidden_units'][1:]
-        for units in config['hidden_units']:
-            x = layers.Dropout(config['dropout_rate'])(x)
-            x = layers.Dense(units,activation=config['activation'])(x)
-        output_layer = layers.Dense(config['output_units'],activation='softmax')(x)
-        
-        self.model = keras.Model(inputs=[input_attr,input_feat],outputs=output_layer)
-
-    def call(self, inputs):
-        return self.model(inputs)
-      
-
 class mortality_RNN(keras.Model):
     def __init__(self,config):
         super().__init__()
-        self.build_model(config)
-
-    def build_model(self,config):
-        input_attr = layers.Input(shape=config['input_shape_attr'])
-        input_feat = layers.Input(shape=config['input_shape_feat'])
-        #first layer consists of separate processing layers
-        x_attr = layers.Dense(config['hidden_units'][0],activation=config['activation'])(input_attr)
-        x_feat = layers.GRU(config['hidden_units'][0],activation=config['activation'])(input_feat)
-        x = layers.Concatenate(axis=1)([x_attr,x_feat])
-        #rest is just feedforward so can be done in a loop
-        config['hidden_units'] = config['hidden_units'][1:]
-        for units in config['hidden_units']:
-            x = layers.Dropout(config['dropout_rate'])(x)
-            x = layers.Dense(units,activation=config['activation'])(x)
-        output_layer = layers.Dense(1,activation='sigmoid')(x)
-        
-        self.model = keras.Model(inputs=[input_attr,input_feat],outputs=output_layer)
+        self.base_model = RNN(config)
+        self.output_layer = layers.Dense(1,activation='sigmoid')
 
     def call(self, inputs):
-        return self.model(inputs)
+        x = self.base_model(inputs)
+        return self.output_layer(x)
     
-class mortality_RNN_simple(keras.Model):
+    
+class trajectory_RNN(keras.Model):
     def __init__(self,config):
         super().__init__()
-        self.build_model(config)
-
-    def build_model(self,config):
-        input_attr = layers.Input(shape=config['input_shape_attr'])
-        input_feat = layers.Input(shape=config['input_shape_feat'])
-        #separate processing layers
-        x_attr = layers.Dense(5,activation=config['activation'])(input_attr) #9 input variables 
-        
-        x_feat = layers.Bidirectional(layers.LSTM(10,activation=config['activation']))(input_feat) #14 input variables
-        x_feat_ex = layers.Dense(5,activation=config['activation'])(x_feat)
-
-        stacked = layers.LSTM(10,activation=config['activation'],return_sequences=True)(input_feat)
-        stacked = layers.LSTM(5,activation=config['activation'])(stacked)
-        stacked_ex = layers.Dense(3,activation=config['activation'])(stacked)
-        
-        #x_feat = layers.Dropout(.25)(x_feat)
-        x = layers.Concatenate(axis=1)([input_attr,x_attr,x_feat])
-        output_layer = layers.Dense(1,activation='sigmoid')(x)
-        self.model = keras.Model(inputs=[input_attr,input_feat],outputs=output_layer)
+        self.base_model = RNN(config)
+        self.output_layer = layers.Dense(config['output_units'],activation='softmax')
 
     def call(self, inputs):
-        return self.model(inputs)
+        x = self.base_model(inputs)
+        return self.output_layer(x)
     
+class privacy_RNN(keras.Model):
+    def __init__(self,config,labels):
+        super().__init__()
+        self.base_model = RNN(config)
+        self.labels=labels
+        self.race_size = sum(l.count('race') for l in self.labels)
+        #initialize the output layers with names
+        self.output_age = layers.Dense(1,activation='linear',name='output_1')
+        self.output_gender = layers.Dense(1,activation='sigmoid',name='output_2')
+        self.output_race = layers.Dense(self.race_size,activation='softmax',name='output_3')
+
+    def call(self, inputs):
+        x = self.base_model(inputs)
+        #output layer is conditional on input labels
+        output_layer = []
+        if 'age' in self.labels:
+            output_layer.append(self.output_age(x))
+        if 'gender' in self.labels:
+            output_layer.append(self.output_gender(x))
+        if self.race_size>0:
+            output_layer.append(self.output_race(x))
+        return output_layer
 
     
 class mortality_LR(LogisticRegression):
@@ -130,47 +105,6 @@ class mortality_RF(RandomForestClassifier):
         )
     
 
-class privacy_RNN(keras.Model):
-    def __init__(self,config,labels):
-        super().__init__()
-        self.labels=labels
-        self.race_size = sum(l.count('race') for l in self.labels)
-        #initialize the output layers with names
-        self.output_age = layers.Dense(1,activation='linear',name='output_1')
-        self.output_gender = layers.Dense(1,activation='sigmoid',name='output_2')
-        self.output_race = layers.Dense(self.race_size,activation='softmax',name='output_3')
-        self.build_model(config)
-        
-
-    def build_model(self,config):
-        #separate processing layers for static and temporal data
-        input_attr = layers.Input(shape=config['input_shape_attr'])
-        input_feat = layers.Input(shape=config['input_shape_feat'])
-        x_attr = layers.Dense(config['hidden_units'][0],activation=config['activation'])(input_attr)
-        x_feat = layers.GRU(config['hidden_units'][0],activation=config['activation'])(input_feat)
-        x = layers.Concatenate(axis=1)([x_attr,x_feat])
-        config['hidden_units'] = config['hidden_units'][1:]
-        #after concatenating we can add layers in a loop
-        for units in config['hidden_units']:
-            x = layers.Dropout(config['dropout_rate'])(x)
-            x = layers.Dense(units,activation=config['activation'])(x)
-        
-        #output layer is conditional on input labels
-        output_layer = []
-        if 'age' in self.labels:
-            output_layer.append(self.output_age(x))
-        if 'gender' in self.labels:
-            output_layer.append(self.output_gender(x))
-        if self.race_size>0:
-            output_layer.append(self.output_race(x))
-        
-        self.model = keras.Model(inputs=[input_attr,input_feat],outputs=output_layer)
-
-    def call(self, inputs):
-        return self.model(inputs)
-        
-    
-
 #tSNE projection plot, color coded by label
 def tsne(distance_matrix,labels):
     embeddings = TSNE(n_components=2,init='random',metric='precomputed').fit_transform(distance_matrix)
@@ -186,8 +120,8 @@ def tsne(distance_matrix,labels):
 def static_gower_matrix(data,cat_features=None):
     return gower_matrix(data,cat_features=cat_features)
 
-#get gower matrix for 3d time series of mixed datatypes
-def mts_gower_matrix(data):
+#get gower matrix for 3d sequences of mixed datatypes
+def dyn_gower_matrix(data):
     class Input:
         def __init__(self):
             self.check_errors = False 
